@@ -53,7 +53,7 @@ st.markdown("""
 def load_grdp_data():
     """Load GRDP data dari file JSON"""
     try:
-        with open('/workspace/grdp_full.json', 'r') as f:
+        with open('https://github.com/bernardiava/BPS-2025/blob/main/grdp_full.json', 'r') as f:
             data = json.load(f)
         return data
     except Exception as e:
