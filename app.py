@@ -6,6 +6,7 @@ Data sumber: Badan Pusat Statistik (BPS) Indonesia
 - Perdagangan Antar Wilayah Indonesia 2024
 
 Metodologi: Regional Economic Impact Analysis dengan pendekatan multiplier effect
+Input-Output Analysis menggunakan Leontief Inverse Matrix
 """
 
 import streamlit as st
@@ -16,6 +17,7 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 import json
 import os
+from io_analysis import InputOutputAnalyzer, create_io_summary
 
 # Konfigurasi halaman
 st.set_page_config(
@@ -756,6 +758,15 @@ st.sidebar.header("⚙️ Parameter Analisis")
 grdp_data = load_grdp_data()
 province_mapping = load_province_mapping()
 
+# Load Input-Output analysis module
+@st.cache_resource
+def load_io_analyzer():
+    """Load IO analyzer with caching"""
+    return InputOutputAnalyzer()
+
+io_analyzer = load_io_analyzer()
+io_loaded = io_analyzer.load_table(2020)
+
 if not grdp_data:
     st.error("Data tidak tersedia. Pastikan file grdp_full.json ada di workspace.")
     st.stop()
@@ -792,11 +803,45 @@ if show_methodology:
     
     4. **Policy Generator**: Rekomendasi otomatis berdasarkan struktur ekonomi
     
-    5. **Sumber Data**: 
+    5. **Input-Output Analysis**: Menggunakan Leontief Inverse Matrix
+       - Technical coefficients matrix (A-matrix)
+       - Output multipliers dari 35 sektor industri
+       - Backward dan forward linkages analysis
+    
+    6. **Sumber Data**: 
        - BPS: PDRB Provinsi-Provinsi 2021-2025
-       - BPS: Tabel Input-Output 2020
+       - BPS: Tabel Input-Output Indonesia 2020 (35 sektor)
        - BPS: Perdagangan Antar Wilayah 2024
     """)
+
+# Toggle untuk menampilkan IO analysis
+show_io_analysis = st.sidebar.checkbox("Tampilkan Analisis Input-Output", value=False)
+
+if show_io_analysis and io_loaded:
+    st.sidebar.success("✅ Tabel Input-Output 2020 berhasil dimuat")
+    
+    # Tampilkan ringkasan IO analysis di sidebar
+    io_summary_col1, io_summary_col2 = st.columns(2)
+    
+    with io_summary_col1:
+        st.subheader("🏭 Top 5 Sektor dengan Multiplier Tertinggi")
+        top_sectors = io_analyzer.get_top_sectors_by_multiplier(5)
+        for rank, (sector, mult) in enumerate(top_sectors, 1):
+            st.metric(f"#{rank}", f"{mult:.3f}", sector)
+    
+    with io_summary_col2:
+        st.subheader("📊 Statistik IO Table")
+        st.metric("Total Output Nasional", f"${io_analyzer.data['total_output_sum']:,.0f} Juta USD")
+        st.metric("Jumlah Sektor", len(io_analyzer.industry_names))
+        
+        # Linkage analysis untuk Construction
+        construction_linkages = io_analyzer.get_sector_linkages('Construction')
+        st.info(f"""
+        **Konstruksi:**
+        - Backward Linkage: {construction_linkages['backward_linkage']:.3f}
+        - Forward Linkage: {construction_linkages['forward_linkage']:.3f}
+        - {construction_linkages['interpretation']}
+        """)
 
 # Proses analisis
 impact_results = calculate_economic_impact(grdp_data, selected_province)
@@ -1049,6 +1094,168 @@ with tab3:
             )
             fig_bar.update_layout(height=400)
             st.plotly_chart(fig_bar, use_container_width=True)
+
+# Tab baru untuk Input-Output Analysis
+tab5 = st.tabs(["📊 Dashboard Dampak", "🧠 Interpretasi & Kebijakan", "📋 Breakdown Data", "🗺️ Komparasi Nasional", "🏭 Analisis Input-Output"])[4]
+
+with tab5:
+    st.header("🏭 Analisis Input-Output Indonesia 2020")
+    
+    if io_loaded:
+        st.markdown("""
+        Analisis Input-Output menggunakan **Leontief Inverse Matrix** untuk mengukur multiplier effect 
+        dari setiap sektor industri terhadap perekonomian nasional. Data dari BPS mencakup 35 sektor industri.
+        """)
+        
+        # IO Analysis sections
+        io_tab1, io_tab2, io_tab3 = st.tabs(["Multiplier Sectors", "Impact Simulation", "Sector Linkages"])
+        
+        with io_tab1:
+            st.subheader("📈 Output Multipliers per Sektor")
+            
+            # Get all multipliers
+            multipliers_df = pd.DataFrame([
+                {'Sector': sector, 'Output Multiplier': mult}
+                for sector, mult in io_analyzer.get_output_multipliers().items()
+            ]).sort_values('Output Multiplier', ascending=False)
+            
+            # Top 10 bar chart
+            st.subheader("Top 10 Sektor dengan Multiplier Tertinggi")
+            fig_top10 = px.bar(
+                multipliers_df.head(10),
+                x='Output Multiplier',
+                y='Sector',
+                orientation='h',
+                title='Sektor dengan Efek Multiplier Terbesar',
+                color='Output Multiplier',
+                color_continuous_scale='Viridis'
+            )
+            fig_top10.update_layout(height=500)
+            st.plotly_chart(fig_top10, use_container_width=True)
+            
+            # Full table
+            st.subheader("Semua Sektor (35 Industri)")
+            st.dataframe(
+                multipliers_df.style.format({'Output Multiplier': '{:.4f}'}),
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            # Explanation
+            st.info("""
+            **Interpretasi Output Multiplier:**
+            - Nilai > 2.0: Sektor dengan dampak ekonomi sangat tinggi
+            - Nilai 1.5 - 2.0: Sektor dengan dampak ekonomi tinggi  
+            - Nilai < 1.5: Sektor dengan dampak ekonomi moderat
+            
+            Contoh: Multiplier Konstruksi = 2.01 berarti setiap $1 investasi di konstruksi 
+            menghasilkan $2.01 total output ekonomi (langsung + tidak langsung).
+            """)
+        
+        with io_tab2:
+            st.subheader("🔧 Simulasi Dampak Investasi")
+            
+            # Sector selection
+            selected_io_sector = st.selectbox(
+                "Pilih Sektor untuk Simulasi:",
+                options=io_analyzer.industry_names,
+                index=io_analyzer.industry_names.index('Construction') if 'Construction' in io_analyzer.industry_names else 0
+            )
+            
+            investment_amount = st.slider(
+                "Besaran Investasi (Juta USD):",
+                min_value=100,
+                max_value=10000,
+                value=1000,
+                step=100
+            )
+            
+            if st.button("Hitung Dampak Ekonomi"):
+                impact = io_analyzer.calculate_infrastructure_impact(investment_amount, selected_io_sector)
+                
+                if 'error' not in impact:
+                    col_sim1, col_sim2, col_sim3 = st.columns(3)
+                    
+                    with col_sim1:
+                        st.metric("Dampak Langsung", f"${impact['direct_impact']:,.0f} Juta")
+                    with col_sim2:
+                        st.metric("Dampak Tidak Langsung", f"${impact['indirect_impact']:,.0f} Juta")
+                    with col_sim3:
+                        st.metric("Total Dampak", f"${impact['total_impact']:,.0f} Juta")
+                    
+                    st.metric("Multiplier Effect", f"{impact['multiplier']:.4f}x")
+                    
+                    # Pie chart breakdown
+                    fig_pie_impact = px.pie(
+                        values=[impact['direct_impact'], impact['indirect_impact']],
+                        names=['Dampak Langsung', 'Dampak Tidak Langsung'],
+                        title=f'Distribusi Dampak Investasi ${investment_amount:,} Juta di {selected_io_sector}',
+                        hole=0.4
+                    )
+                    st.plotly_chart(fig_pie_impact, use_container_width=True)
+                    
+                    # Top beneficiaries
+                    st.subheader("🏆 5 Sektor Penerima Manfaat Terbesar")
+                    top_benefits_df = pd.DataFrame(
+                        impact['top_5_beneficiaries'],
+                        columns=['Sektor', 'Dampak (Juta USD)']
+                    )
+                    st.dataframe(top_benefits_df.style.format({'Dampak (Juta USD)': '${:,.2f}'}), hide_index=True)
+        
+        with io_tab3:
+            st.subheader("🔗 Analisis Linkages Antar Sektor")
+            
+            linkage_sector = st.selectbox(
+                "Analisis Sektor:",
+                options=io_analyzer.industry_names,
+                index=io_analyzer.industry_names.index('Construction') if 'Construction' in io_analyzer.industry_names else 0,
+                key='linkage_select'
+            )
+            
+            linkages = io_analyzer.get_sector_linkages(linkage_sector)
+            
+            if linkages:
+                col_l1, col_l2 = st.columns(2)
+                
+                with col_l1:
+                    st.metric("Backward Linkage", f"{linkages['backward_linkage']:.4f}")
+                    st.markdown(f"*Direct Input Coefficient:* {linkages['direct_input_coefficient']:.4f}")
+                
+                with col_l2:
+                    st.metric("Forward Linkage", f"{linkages['forward_linkage']:.4f}")
+                    st.markdown(f"*Direct Sales Coefficient:* {linkages['direct_sales_coefficient']:.4f}")
+                
+                st.success(f"**Interpretasi:** {linkages['interpretation']}")
+                
+                # Radar chart for linkages
+                fig_radar = go.Figure()
+                
+                fig_radar.add_trace(go.Scatterpolar(
+                    r=[linkages['backward_linkage'], linkages['forward_linkage'], 
+                       linkages['direct_input_coefficient'], linkages['direct_sales_coefficient']],
+                    theta=['Backward Linkage', 'Forward Linkage', 
+                           'Direct Input', 'Direct Sales'],
+                    fill='toself',
+                    name=linkage_sector
+                ))
+                
+                fig_radar.update_layout(
+                    polar=dict(radialaxis=dict(visible=True)),
+                    showlegend=False,
+                    title=f"Radar Chart Linkages: {linkage_sector}"
+                )
+                
+                st.plotly_chart(fig_radar, use_container_width=True)
+                
+                st.info("""
+                **Penjelasan Linkages:**
+                - **Backward Linkage**: Kekuatan keterkaitan dengan sektor hulu (pemasok)
+                - **Forward Linkage**: Kekuatan keterkaitan dengan sektor hilir (pembeli)
+                - Sektor dengan backward linkage tinggi mendorong pertumbuhan sektor pemasok
+                - Sektor dengan forward linkage tinggi memungkinkan aktivitas sektor downstream
+                """)
+    else:
+        st.error("Gagal memuat Tabel Input-Output. Pastikan file excel tersedia.")
 
 with tab4:
     st.header("🗺️ Perbandingan Antar Provinsi")
