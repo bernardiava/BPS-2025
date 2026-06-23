@@ -761,73 +761,85 @@ province_mapping = load_province_mapping()
 # Load Input-Output analysis module with robust error handling (similar to GRDP loading)
 @st.cache_resource
 def load_io_analyzer():
-    """Load IO analyzer with caching and multiple fallback paths"""
+    """Load IO analyzer with detailed error reporting"""
     possible_paths = [
         'indonesia-tables-as-of-june-2023.xlsx',
         './indonesia-tables-as-of-june-2023.xlsx',
-        '/workspace/indonesia-tables-as-of-june-2023.xlsx',
-        'data/indonesia-tables-as-of-june-2023.xlsx',
-        '../indonesia-tables-as-of-june-2023.xlsx'
     ]
     
-    all_errors = []
-    
+    # First, find which path exists
+    found_path = None
     for path in possible_paths:
-        try:
-            # Check if file exists first
-            if not os.path.exists(path):
-                all_errors.append(f"❌ File tidak ditemukan: {path}")
-                continue
-                
-            st.info(f"🔍 Mencoba memuat dari: {path}")
-            analyzer = InputOutputAnalyzer(excel_path=path)
+        if os.path.exists(path):
+            found_path = path
+            break
+    
+    if not found_path:
+        st.error("❌ File Excel tidak ditemukan di lokasi manapun")
+        return None, False
+    
+    st.info(f"📁 File ditemukan di: `{found_path}`")
+    
+    # Diagnostic: Show Excel structure
+    with st.expander("🔍 Lihat Struktur File Excel", expanded=True):
+        diagnose_excel_structure(found_path)
+    
+    # Try multiple approaches to load the IO table
+    try:
+        # Approach 1: Use the class as intended
+        st.write("🔄 **Approach 1:** Using InputOutputAnalyzer.load_table(2020)...")
+        analyzer = InputOutputAnalyzer(excel_path=found_path)
+        
+        # Try different year parameters
+        years_to_try = [2020, '2020', None, 2019, 2021]
+        loaded = False
+        
+        for year in years_to_try:
+            try:
+                if analyzer.load_table(year):
+                    st.success(f"✅ Berhasil load dengan parameter tahun={year}")
+                    loaded = True
+                    break
+            except Exception as e:
+                st.warning(f"   Gagal dengan tahun={year}: {str(e)[:100]}")
+        
+        if loaded:
+            return analyzer, True
+        else:
+            st.error("   ❌ Semua percobaan load_table gagal")
             
-            if analyzer.load_table(2020):
-                st.success(f"✅ Tabel Input-Output berhasil dimuat dari: {path}")
-                return analyzer, True
-            else:
-                all_errors.append(f"⚠️ File ditemukan di {path} tetapi load_table(2020) gagal")
-                
-        except ImportError as e:
-            all_errors.append(f"❌ Missing dependency: {e}")
-            break  # No need to try other paths if import fails
-        except PermissionError as e:
-            all_errors.append(f"❌ Permission denied: {path}")
-        except Exception as e:
-            all_errors.append(f"❌ Error loading {path}: {str(e)}")
-    
-    # Show all errors to user
-    st.error("❌ GAGAL MEMUAT TABEL INPUT-OUTPUT")
-    with st.expander("🔍 Detail Error (klik untuk melihat)"):
-        for error in all_errors:
-            st.write(error)
-    
-    # Offer manual upload as fallback
-    st.warning("📤 Silakan upload file Excel secara manual:")
-    uploaded_file = st.file_uploader(
-        "Upload indonesia-tables-as-of-june-2023.xlsx", 
-        type=['xlsx', 'xls'],
-        key="io_excel_upload"
-    )
-    
-    if uploaded_file is not None:
-        try:
-            # Save uploaded file temporarily
-            temp_path = "temp_io_upload.xlsx"
-            with open(temp_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
+            # Show what methods are available
+            st.write("📋 **Available methods in InputOutputAnalyzer:**")
+            methods = [m for m in dir(analyzer) if not m.startswith('_')]
+            st.write(methods)
             
-            analyzer = InputOutputAnalyzer(excel_path=temp_path)
-            if analyzer.load_table(2020):
-                st.success("✅ File berhasil diupload dan dimuat!")
-                # Clean up temp file
-                os.remove(temp_path)
-                return analyzer, True
-            else:
-                st.error("⚠️ File berhasil diupload tapi format tidak sesuai")
-                os.remove(temp_path)
-        except Exception as e:
-            st.error(f"❌ Error membaca file upload: {e}")
+    except Exception as e:
+        st.error(f"❌ Error in Approach 1: {str(e)}")
+        st.exception(e)
+    
+    # Approach 2: Try direct pandas loading
+    try:
+        st.write("\n🔄 **Approach 2:** Direct pandas loading...")
+        import pandas as pd
+        
+        xl = pd.ExcelFile(found_path)
+        st.write(f"Sheet names: {xl.sheet_names}")
+        
+        # Look for IO-related sheets
+        io_sheets = [s for s in xl.sheet_names if any(
+            keyword in s.lower() for keyword in ['io', 'input', 'output', '2020', 'table', 'matrix']
+        )]
+        
+        if not io_sheets:
+            io_sheets = xl.sheet_names  # Use all sheets
+        
+        for sheet in io_sheets[:3]:
+            df = pd.read_excel(found_path, sheet_name=sheet, header=None)
+            st.write(f"\n📄 Sheet `{sheet}`: {df.shape}")
+            st.dataframe(df.head(10))
+            
+    except Exception as e:
+        st.error(f"❌ Error in Approach 2: {str(e)}")
     
     return None, False
 
