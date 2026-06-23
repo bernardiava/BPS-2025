@@ -773,7 +773,7 @@ with tab2:
                   f"+ Rp {latest_data['indirect_impact']:,.0f} M",
                   f"= Rp {latest_data['total_impact']:,.0f} M"],
             connector={"line":{"color":"rgb(63, 182, 124)"}},
-            marker={"color":["#3b82f6", "#22c55e", "#1f2937"]}
+            marker={"color":["#3b82f6", "#22c55e"]}
         ))
         fig_wf.update_layout(
             title=f"Waterfall Effect: Dari Investasi ke Dampak Total ({selected_year})",
