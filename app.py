@@ -761,8 +761,7 @@ province_mapping = load_province_mapping()
 # Load Input-Output analysis module with robust error handling (similar to GRDP loading)
 @st.cache_resource
 def load_io_analyzer():
-    """Load IO analyzer with caching and multiple fallback paths - similar to GRDP loading"""
-    # Try multiple possible paths for the Excel file (same pattern as GRDP JSON loading)
+    """Load IO analyzer with caching and multiple fallback paths"""
     possible_paths = [
         'indonesia-tables-as-of-june-2023.xlsx',
         './indonesia-tables-as-of-june-2023.xlsx',
@@ -771,20 +770,65 @@ def load_io_analyzer():
         '../indonesia-tables-as-of-june-2023.xlsx'
     ]
     
-    io_loaded_successfully = False
-    loaded_path = None
+    all_errors = []
     
     for path in possible_paths:
         try:
+            # Check if file exists first
+            if not os.path.exists(path):
+                all_errors.append(f"❌ File tidak ditemukan: {path}")
+                continue
+                
+            st.info(f"🔍 Mencoba memuat dari: {path}")
             analyzer = InputOutputAnalyzer(excel_path=path)
+            
             if analyzer.load_table(2020):
                 st.success(f"✅ Tabel Input-Output berhasil dimuat dari: {path}")
                 return analyzer, True
+            else:
+                all_errors.append(f"⚠️ File ditemukan di {path} tetapi load_table(2020) gagal")
+                
+        except ImportError as e:
+            all_errors.append(f"❌ Missing dependency: {e}")
+            break  # No need to try other paths if import fails
+        except PermissionError as e:
+            all_errors.append(f"❌ Permission denied: {path}")
         except Exception as e:
-            print(f"Failed to load from {path}: {e}")
-            continue
+            all_errors.append(f"❌ Error loading {path}: {str(e)}")
     
-    # If all paths fail, return None and False
+    # Show all errors to user
+    st.error("❌ GAGAL MEMUAT TABEL INPUT-OUTPUT")
+    with st.expander("🔍 Detail Error (klik untuk melihat)"):
+        for error in all_errors:
+            st.write(error)
+    
+    # Offer manual upload as fallback
+    st.warning("📤 Silakan upload file Excel secara manual:")
+    uploaded_file = st.file_uploader(
+        "Upload indonesia-tables-as-of-june-2023.xlsx", 
+        type=['xlsx', 'xls'],
+        key="io_excel_upload"
+    )
+    
+    if uploaded_file is not None:
+        try:
+            # Save uploaded file temporarily
+            temp_path = "temp_io_upload.xlsx"
+            with open(temp_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            
+            analyzer = InputOutputAnalyzer(excel_path=temp_path)
+            if analyzer.load_table(2020):
+                st.success("✅ File berhasil diupload dan dimuat!")
+                # Clean up temp file
+                os.remove(temp_path)
+                return analyzer, True
+            else:
+                st.error("⚠️ File berhasil diupload tapi format tidak sesuai")
+                os.remove(temp_path)
+        except Exception as e:
+            st.error(f"❌ Error membaca file upload: {e}")
+    
     return None, False
 
 io_analyzer, io_loaded = load_io_analyzer()
