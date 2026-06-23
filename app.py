@@ -355,14 +355,170 @@ def create_comparison_chart(all_impact_data, metric='total_impact'):
     
     return fig
 
+
+def generate_policy_recommendations(impact_data, province_name):
+    """
+    Menghasilkan interpretasi ekonomi dan rekomendasi kebijakan berbasis data
+    Menggunakan logika Regional Economist untuk analisis struktural
+    """
+    if not impact_data:
+        return None
+    
+    # Ambil data tahun terbaru
+    latest_year = max(impact_data.keys())
+    data = impact_data[latest_year]
+    
+    # Ekstrak rasio kunci
+    invest_ratio = data['investment_ratio']
+    consume_ratio = data['consumption_ratio']
+    gov_ratio = data['government_ratio']
+    net_export_ratio = data['net_export_ratio']
+    multiplier = data['multiplier']
+    
+    # --- DIAGNOSIS TIPE EKONOMI ---
+    if invest_ratio > 35:
+        eco_type = "Investment-Driven Economy"
+        eco_desc = f"Ekonomi {province_name} didorong oleh investasi tinggi ({invest_ratio:.1f}% PDRB). Ini mengindikasikan fase akselerasi pembangunan infrastruktur atau ekspansi sektor ekstraktif/manufaktur."
+    elif consume_ratio > 55:
+        eco_type = "Consumption-Driven Economy"
+        eco_desc = f"Ekonomi {province_name} didominasi konsumsi rumah tangga ({consume_ratio:.1f}% PDRB). Ini menunjukkan pasar domestik yang kuat namun berpotensi bergantung pada impor."
+    elif net_export_ratio > 15:
+        eco_type = "Export-Oriented Economy"
+        eco_desc = f"Ekonomi {province_name} berorientasi ekspor dengan surplus neraca perdagangan yang kuat ({net_export_ratio:.1f}% PDRB)."
+    elif net_export_ratio < -15:
+        eco_type = "Import-Dependent Economy"
+        eco_desc = f"Ekonomi {province_name} mengalami defisit neraca perdagangan yang signifikan ({net_export_ratio:.1f}% PDRB), mengindikasikan ketergantungan tinggi pada barang modal/impor."
+    else:
+        eco_type = "Balanced Mixed Economy"
+        eco_desc = f"Ekonomi {province_name} menunjukkan keseimbangan antara konsumsi, investasi, dan perdagangan eksternal."
+    
+    # --- REKOMENDASI KEBIJAKAN ---
+    policies = []
+    risks = []
+    
+    # Kebijakan berdasarkan investasi
+    if invest_ratio > 40:
+        policies.append({
+            "priority": "HIGH",
+            "category": "Investasi",
+            "recommendation": "Optimalisasi Iklim Investasi & Linkage Industry",
+            "detail": "Permudah perizinan proyek strategis dan dorong penggunaan material lokal (TKDN) untuk memaksimalkan multiplier effect di daerah."
+        })
+        risks.append("Risiko Over-Heating: Waspadai inflasi daerah akibat permintaan agregat terlalu tinggi.")
+    elif invest_ratio < 20:
+        policies.append({
+            "priority": "HIGH",
+            "category": "Investasi",
+            "recommendation": "Percepatan Belanja Modal Infrastruktur",
+            "detail": "Tingkatkan alokasi APBD untuk infrastruktur dasar (jalan, irigasi, listrik) guna mendorong pertumbuhan ekonomi jangka panjang."
+        })
+    
+    # Kebijakan berdasarkan konsumsi
+    if consume_ratio > 60:
+        policies.append({
+            "priority": "MEDIUM",
+            "category": "Konsumsi",
+            "recommendation": "Stimulus UMKM & Digitalisasi Pasar",
+            "detail": "Fokus pada penguatan rantai pasok lokal dan perluasan akses pasar digital agar konsumsi menyerap produk dalam negeri, bukan impor."
+        })
+        risks.append("Ketergantungan Impor: Konsumsi tinggi tanpa produksi lokal akan memperlebar defisit transaksi berjalan.")
+    
+    # Kebijakan berdasarkan neraca perdagangan
+    if net_export_ratio < -20:
+        policies.append({
+            "priority": "HIGH",
+            "category": "Perdagangan",
+            "recommendation": "Substitusi Impor & Hilirisasi",
+            "detail": "Identifikasi komoditas impor terbesar dan berikan insentif produksi dalam negeri. Wajibkan pengolahan bahan mentah di daerah sebelum diekspor."
+        })
+        risks.append("Kerentanan Nilai Tukar: Fluktuasi kurs dapat mengguncang biaya produksi dan daya beli masyarakat.")
+    elif net_export_ratio > 20:
+        policies.append({
+            "priority": "MEDIUM",
+            "category": "Perdagangan",
+            "recommendation": "Diversifikasi Pasar Ekspor",
+            "detail": "Kurangi ketergantungan pada satu negara tujuan ekspor dan kembangkan produk bernilai tambah tinggi."
+        })
+    
+    # Kebijakan berdasarkan multiplier
+    if multiplier > 2.0:
+        policies.append({
+            "priority": "MEDIUM",
+            "category": "Efisiensi",
+            "recommendation": "Pertahankan Momentum Pembangunan",
+            "detail": f"Dengan multiplier {multiplier:.2f}x, efektivitas investasi infrastruktur sangat tinggi. Lanjutkan proyek prioritas dengan monitoring ketat."
+        })
+    else:
+        policies.append({
+            "priority": "MEDIUM",
+            "category": "Efisiensi",
+            "recommendation": "Peningkatan Kualitas Belanja Infrastruktur",
+            "detail": f"Multiplier {multiplier:.2f}x masih dapat ditingkatkan. Fokus pada infrastruktur produktif yang terhubung dengan pusat ekonomi."
+        })
+    
+    # Jika tidak ada risiko spesifik
+    if not risks:
+        risks.append("Stabilitas makroekonomi relatif terjaga. Pertahankan kebijakan saat ini dengan monitoring rutin.")
+    
+    return {
+        "year": latest_year,
+        "eco_type": eco_type,
+        "eco_description": eco_desc,
+        "policies": policies,
+        "risks": risks,
+        "key_metrics": {
+            "investment_ratio": invest_ratio,
+            "consumption_ratio": consume_ratio,
+            "net_export_ratio": net_export_ratio,
+            "multiplier": multiplier
+        }
+    }
+
+# Custom CSS tambahan untuk policy section
+st.markdown("""
+<style>
+    .policy-box {
+        background-color: #f0fdf4;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 12px;
+        border-left: 4px solid #22c55e;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .risk-box {
+        background-color: #fef2f2;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 12px;
+        border-left: 4px solid #ef4444;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .diagnosis-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 20px;
+        color: white;
+        margin-bottom: 20px;
+    }
+    .priority-high {
+        background-color: #fee2e2;
+        border-left-color: #ef4444 !important;
+    }
+    .priority-medium {
+        background-color: #fef3c7;
+        border-left-color: #f59e0b !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Header aplikasi
-st.markdown('<p class="main-header">🏗️ Analisis Dampak Infrastruktur terhadap Ekonomi Regional</p>', 
+st.markdown('<p class="main-header">🏛️ Regional Infrastructure Impact & Policy Advisor</p>', 
             unsafe_allow_html=True)
 
 st.markdown("""
 <div style='text-align: center; color: #666; margin-bottom: 2rem;'>
 Platform analitik berbasis data BPS untuk mengukur multiplier effect investasi infrastruktur 
-pada perekonomian provinsi di Indonesia menggunakan metodologi Regional Economic Impact Analysis
+dan memberikan rekomendasi kebijakan berbasis evidence untuk pemerintah provinsi di Indonesia
 </div>
 """, unsafe_allow_html=True)
 
@@ -407,7 +563,9 @@ if show_methodology:
     
     3. **Dampak Tidak Langsung**: Efek multiplier melalui rantai pasok
     
-    4. **Sumber Data**: 
+    4. **Policy Generator**: Rekomendasi otomatis berdasarkan struktur ekonomi
+    
+    5. **Sumber Data**: 
        - BPS: PDRB Provinsi-Provinsi 2021-2025
        - BPS: Tabel Input-Output 2020
        - BPS: Perdagangan Antar Wilayah 2024
@@ -420,142 +578,262 @@ if not impact_results:
     st.error(f"Tidak ada data untuk provinsi {selected_province}")
     st.stop()
 
-# Tampilkan metrik utama
-st.header(f"📍 {selected_province}")
+# Generate policy recommendations
+policy_rec = generate_policy_recommendations(impact_results, selected_province)
 
-if selected_year in impact_results:
-    latest_data = impact_results[selected_year]
+# Tabs untuk navigasi
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📊 Dashboard Dampak", 
+    "🧠 Interpretasi & Kebijakan",
+    "📋 Breakdown Data",
+    "🗺️ Komparasi Nasional"
+])
+
+with tab1:
+    # Tampilkan metrik utama
+    st.header(f"📍 {selected_province} ({selected_year})")
     
-    # Kolom metrik
-    col1, col2, col3, col4 = st.columns(4)
+    if selected_year in impact_results:
+        latest_data = impact_results[selected_year]
+        
+        # Kolom metrik
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                label="Investasi Infrastruktur",
+                value=f"Rp {latest_data['infrastructure_investment']:,.0f} M",
+                delta=f"{latest_data['investment_ratio']:.1f}% dari PDRB"
+            )
+        
+        with col2:
+            st.metric(
+                label="Total Dampak Ekonomi",
+                value=f"Rp {latest_data['total_impact']:,.0f} M",
+                delta=f"Multiplier: {latest_data['multiplier']:.2f}x"
+            )
+        
+        with col3:
+            st.metric(
+                label="Dampak Tidak Langsung",
+                value=f"Rp {latest_data['indirect_impact']:,.0f} M",
+                delta=f"+{latest_data['indirect_impact']/latest_data['direct_impact']*100:.1f}% dari dampak langsung"
+            )
+        
+        with col4:
+            st.metric(
+                label="Kontribusi ke PDRB",
+                value=f"{latest_data['contribution_ratio']:.2f}%",
+                delta=f"Total PDRB: Rp {latest_data['grdp_total']:,.0f} M"
+            )
     
-    with col1:
-        st.metric(
-            label="Investasi Infrastruktur",
-            value=f"Rp {latest_data['infrastructure_investment']:,.0f} M",
-            delta=f"{latest_data['investment_ratio']:.1f}% dari PDRB"
+    # Visualisasi
+    st.subheader("📊 Visualisasi Dampak Infrastruktur")
+    
+    fig_impact = create_impact_visualization(impact_results, selected_province)
+    if fig_impact:
+        st.plotly_chart(fig_impact, use_container_width=True)
+
+with tab2:
+    st.header(f"🧠 Analisis Kebijakan: {selected_province}")
+    
+    if policy_rec:
+        # Diagnosis box
+        st.markdown(f"""
+        <div class="diagnosis-box">
+            <h3 style="margin:0; color:white;">🔍 Diagnosis Struktur Ekonomi</h3>
+            <h4 style="margin:5px 0 15px 0; color:#fbbf24;">{policy_rec['eco_type']}</h4>
+            <p style="margin:0; line-height:1.6;">{policy_rec['eco_description']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Key metrics summary
+        km = policy_rec['key_metrics']
+        st.subheader("📈 Indikator Kunci")
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        col_m1.metric("Rasio Investasi", f"{km['investment_ratio']:.1f}%")
+        col_m2.metric("Rasio Konsumsi", f"{km['consumption_ratio']:.1f}%")
+        col_m3.metric("Net Ekspor", f"{km['net_export_ratio']:.1f}%")
+        col_m4.metric("Multiplier", f"{km['multiplier']:.2f}x")
+        
+        st.markdown("---")
+        
+        # Recommendations
+        st.subheader("💡 Rekomendasi Kebijakan")
+        
+        for policy in policy_rec['policies']:
+            priority_class = "priority-high" if policy['priority'] == "HIGH" else "priority-medium"
+            st.markdown(f"""
+            <div class="policy-box {priority_class}">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-weight:bold; color:#1f2937; font-size:1.1rem;">
+                        {policy['category']}: {policy['recommendation']}
+                    </span>
+                    <span style="background-color:{'#ef4444' if policy['priority']=='HIGH' else '#f59e0b'}; 
+                                color:white; padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:bold;">
+                        {policy['priority']} PRIORITY
+                    </span>
+                </div>
+                <p style="color:#4b5563; margin:0; line-height:1.6;">{policy['detail']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # Risks
+        st.subheader("⚠️ Analisis Risiko")
+        for risk in policy_rec['risks']:
+            st.markdown(f"""
+            <div class="risk-box">
+                <p style="color:#7f1d1d; margin:0; line-height:1.6;">{risk}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Waterfall chart untuk multiplier effect
+        st.subheader("📊 Decomposition Dampak Ekonomi")
+        fig_wf = go.Figure(go.Waterfall(
+            orientation="v",
+            measure=["absolute", "relative", "total"],
+            x=["Investasi Langsung", "Efek Pengganda", "Total Dampak"],
+            y=[latest_data['infrastructure_investment'], 
+               latest_data['indirect_impact'],
+               latest_data['total_impact']],
+            text=[f"Rp {latest_data['infrastructure_investment']:,.0f} M", 
+                  f"+ Rp {latest_data['indirect_impact']:,.0f} M",
+                  f"= Rp {latest_data['total_impact']:,.0f} M"],
+            connector={"line":{"color":"rgb(63, 182, 124)"}},
+            marker={"color":["#3b82f6", "#22c55e", "#1f2937"]}
+        ))
+        fig_wf.update_layout(
+            title=f"Waterfall Effect: Dari Investasi ke Dampak Total ({selected_year})",
+            height=400,
+            showlegend=False
         )
+        st.plotly_chart(fig_wf, use_container_width=True)
+
+with tab3:
+    st.header("📋 Breakdown Komponen PDRB")
     
-    with col2:
-        st.metric(
-            label="Total Dampak Ekonomi",
-            value=f"Rp {latest_data['total_impact']:,.0f} M",
-            delta=f"Multiplier: {latest_data['multiplier']:.2f}x"
+    if selected_year in grdp_data and selected_province in grdp_data[selected_year]:
+        values = grdp_data[selected_year][selected_province]
+        
+        component_names = [
+            "Konsumsi Rumah Tangga",
+            "Konsumsi LNPRT",
+            "Konsumsi Pemerintah",
+            "PMTB (Investasi)",
+            "Perubahan Inventori",
+            "Ekspor",
+            "Impor",
+            "Ekspor Neto",
+            "Total PDRB"
+        ]
+        
+        df_components = pd.DataFrame({
+            'Komponen': component_names,
+            'Nilai (Miliar Rupiah)': values,
+            'Persentase': [(v / values[8] * 100) if values[8] > 0 else 0 for v in values]
+        })
+        
+        # Tampilkan tabel
+        st.dataframe(
+            df_components.style.format({
+                'Nilai (Miliar Rupiah)': '{:,.2f}',
+                'Persentase': '{:.2f}%'
+            }),
+            use_container_width=True,
+            hide_index=True
         )
-    
-    with col3:
-        st.metric(
-            label="Dampak Tidak Langsung",
-            value=f"Rp {latest_data['indirect_impact']:,.0f} M",
-            delta=f"+{latest_data['indirect_impact']/latest_data['direct_impact']*100:.1f}% dari dampak langsung"
-        )
-    
-    with col4:
-        st.metric(
-            label="Kontribusi ke PDRB",
-            value=f"{latest_data['contribution_ratio']:.2f}%",
-            delta=f"Total PDRB: Rp {latest_data['grdp_total']:,.0f} M"
-        )
+        
+        # Chart pie untuk komposisi
+        col_pie1, col_pie2 = st.columns(2)
+        with col_pie1:
+            fig_pie = px.pie(
+                df_components.head(6),
+                values='Nilai (Miliar Rupiah)',
+                names='Komponen',
+                title=f"Komposisi PDRB {selected_province} ({selected_year})",
+                hole=0.4
+            )
+            st.plotly_chart(fig_pie, use_container_width=True)
+        
+        with col_pie2:
+            # Bar chart untuk persentase
+            fig_bar = px.bar(
+                df_components.head(6),
+                x='Persentase',
+                y='Komponen',
+                orientation='h',
+                title='Persentase Kontribusi terhadap PDRB',
+                color='Persentase',
+                color_continuous_scale='Blues'
+            )
+            fig_bar.update_layout(height=400)
+            st.plotly_chart(fig_bar, use_container_width=True)
 
-# Visualisasi
-st.subheader("📊 Visualisasi Dampak Infrastruktur")
-
-fig_impact = create_impact_visualization(impact_results, selected_province)
-if fig_impact:
-    st.plotly_chart(fig_impact, use_container_width=True)
-
-# Detail breakdown
-st.subheader("📋 Breakdown Komponen PDRB")
-
-if selected_year in grdp_data and selected_province in grdp_data[selected_year]:
-    values = grdp_data[selected_year][selected_province]
+with tab4:
+    st.header("🗺️ Perbandingan Antar Provinsi")
     
-    component_names = [
-        "Konsumsi Rumah Tangga",
-        "Konsumsi LNPRT",
-        "Konsumsi Pemerintah",
-        "PMTB (Investasi)",
-        "Perubahan Inventori",
-        "Ekspor",
-        "Impor",
-        "Ekspor Neto",
-        "Total PDRB"
-    ]
+    all_provinces_impact = {}
+    for province in grdp_data['2024'].keys():
+        impact = calculate_economic_impact(grdp_data, province)
+        if impact:
+            all_provinces_impact[province] = impact
     
-    df_components = pd.DataFrame({
-        'Komponen': component_names,
-        'Nilai (Miliar Rupiah)': values,
-        'Persentase': [(v / values[8] * 100) if values[8] > 0 else 0 for v in values]
-    })
+    fig_compare = create_comparison_chart(all_provinces_impact)
+    st.plotly_chart(fig_compare, use_container_width=True)
     
-    # Tampilkan tabel
-    st.dataframe(
-        df_components.style.format({
-            'Nilai (Miliar Rupiah)': '{:,.2f}',
-            'Persentase': '{:.2f}%'
-        }),
-        use_container_width=True,
-        hide_index=True
+    # Analisis tren
+    st.subheader("📈 Tren Pertumbuhan Dampak Infrastruktur")
+    
+    # Pilih beberapa provinsi untuk dibandingkan
+    comparison_provinces = st.multiselect(
+        "Pilih provinsi untuk dibandingkan:",
+        options=list(all_provinces_impact.keys()),
+        default=["DKI Jakarta", "Jawa Barat", "Jawa Timur"] if len(all_provinces_impact) >= 3 else list(all_provinces_impact.keys())[:3],
+        max_selections=5
     )
     
-    # Chart pie untuk komposisi
-    fig_pie = px.pie(
-        df_components.head(5),
-        values='Nilai (Miliar Rupiah)',
-        names='Komponen',
-        title=f"Komposisi PDRB {selected_province} ({selected_year})"
-    )
-    st.plotly_chart(fig_pie, use_container_width=True)
-
-# Perbandingan antar provinsi
-st.header("🗺️ Perbandingan Antar Provinsi")
-
-all_provinces_impact = {}
-for province in grdp_data['2024'].keys():
-    impact = calculate_economic_impact(grdp_data, province)
-    if impact:
-        all_provinces_impact[province] = impact
-
-fig_compare = create_comparison_chart(all_provinces_impact)
-st.plotly_chart(fig_compare, use_container_width=True)
-
-# Analisis tren
-st.subheader("📈 Tren Pertumbuhan Dampak Infrastruktur")
-
-# Pilih beberapa provinsi untuk dibandingkan
-comparison_provinces = st.multiselect(
-    "Pilih provinsi untuk dibandingkan:",
-    options=list(all_provinces_impact.keys()),
-    default=["DKI Jakarta", "Jawa Barat", "Jawa Timur"] if all(len(all_provinces_impact) > i for i in range(3)) else list(all_provinces_impact.keys())[:3],
-    max_selections=5
-)
-
-if comparison_provinces:
-    trend_data = []
-    for province in comparison_provinces:
-        if province in all_provinces_impact:
-            for year, data in all_provinces_impact[province].items():
-                trend_data.append({
-                    'Year': int(year),
-                    'Province': province,
-                    'Total Impact': data['total_impact'],
-                    'Multiplier': data['multiplier']
-                })
-    
-    df_trend = pd.DataFrame(trend_data)
-    
-    fig_trend = px.line(
-        df_trend,
-        x='Year',
-        y='Total Impact',
-        color='Province',
-        markers=True,
-        title='Tren Dampak Ekonomi Infrastruktur Antar Provinsi',
-        labels={'Year': 'Tahun', 'Total Impact': 'Total Dampak (Triliun Rupiah)'}
-    )
-    
-    fig_trend.update_traces(line=dict(width=3))
-    st.plotly_chart(fig_trend, use_container_width=True)
+    if comparison_provinces:
+        trend_data = []
+        for province in comparison_provinces:
+            if province in all_provinces_impact:
+                for year, data in all_provinces_impact[province].items():
+                    trend_data.append({
+                        'Year': int(year),
+                        'Province': province,
+                        'Total Impact': data['total_impact'],
+                        'Multiplier': data['multiplier']
+                    })
+        
+        df_trend = pd.DataFrame(trend_data)
+        
+        fig_trend = px.line(
+            df_trend,
+            x='Year',
+            y='Total Impact',
+            color='Province',
+            markers=True,
+            title='Tren Dampak Ekonomi Infrastruktur Antar Provinsi',
+            labels={'Year': 'Tahun', 'Total Impact': 'Total Dampak (Triliun Rupiah)'}
+        )
+        
+        fig_trend.update_traces(line=dict(width=3))
+        st.plotly_chart(fig_trend, use_container_width=True)
+        
+        # Trend multiplier
+        st.subheader("📊 Perbandingan Multiplier Effect")
+        fig_mult = px.line(
+            df_trend,
+            x='Year',
+            y='Multiplier',
+            color='Province',
+            markers=True,
+            title='Tren Infrastructure Multiplier Antar Provinsi',
+            labels={'Year': 'Tahun', 'Multiplier': 'Nilai Multiplier'}
+        )
+        fig_mult.add_hline(y=1.8, line_dash="dash", line_color="gray", annotation_text="Baseline Multiplier (1.8x)")
+        st.plotly_chart(fig_mult, use_container_width=True)
 
 # Footer
 st.markdown("---")
@@ -563,6 +841,6 @@ st.markdown("""
 <div style='text-align: center; color: #666; font-size: 0.9rem;'>
     <b>Sumber Data:</b> Badan Pusat Statistik (BPS) Indonesia<br>
     Publikasi: Produk Domestik Regional Bruto Provinsi-Provinsi di Indonesia Menurut Pengeluaran 2021-2025<br>
-    <i>Dikembangkan dengan metodologi Regional Economic Impact Analysis</i>
+    <i>Dikembangkan dengan metodologi Regional Economic Impact Analysis & Policy Advisory System</i>
 </div>
 """, unsafe_allow_html=True)
