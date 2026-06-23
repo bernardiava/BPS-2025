@@ -691,23 +691,49 @@ with tab2:
         
         # Waterfall chart untuk multiplier effect
         st.subheader("📊 Decomposition Dampak Ekonomi")
-        fig_wf = go.Figure(go.Waterfall(
-            orientation="v",
-            measure=["absolute", "relative", "total"],
-            x=["Investasi Langsung", "Efek Pengganda", "Total Dampak"],
-            y=[latest_data['infrastructure_investment'], 
-               latest_data['indirect_impact'],
-               latest_data['total_impact']],
-            text=[f"Rp {latest_data['infrastructure_investment']:,.0f} M", 
-                  f"+ Rp {latest_data['indirect_impact']:,.0f} M",
-                  f"= Rp {latest_data['total_impact']:,.0f} M"],
-            connector={"line":{"color":"rgb(63, 182, 124)"}},
-            marker={"color":["#3b82f6", "#22c55e", "#1f2937"]}
+        
+        # Menggunakan approach bar chart biasa untuk kompatibilitas maksimal
+        fig_wf = go.Figure()
+        
+        # Bar untuk investasi langsung
+        fig_wf.add_trace(go.Bar(
+            x=["Investasi Langsung"],
+            y=[latest_data['infrastructure_investment']],
+            marker_color="#3b82f6",
+            text=[f"Rp {latest_data['infrastructure_investment']:,.0f} M"],
+            textposition='outside',
+            name='Investasi Langsung'
         ))
-        fig_wf.update_layout(
-            title=f"Waterfall Effect: Dari Investasi ke Dampak Total ({selected_year})",
-            height=400,
+        
+        # Bar untuk efek pengganda (stacked)
+        fig_wf.add_trace(go.Bar(
+            x=["Efek Pengganda"],
+            y=[latest_data['indirect_impact']],
+            marker_color="#22c55e",
+            text=[f"+ Rp {latest_data['indirect_impact']:,.0f} M"],
+            textposition='outside',
+            name='Efek Pengganda'
+        ))
+        
+        # Line untuk total
+        fig_wf.add_trace(go.Scatter(
+            x=["Total Dampak"],
+            y=[latest_data['total_impact']],
+            mode='markers+text',
+            marker=dict(size=20, color="#1f2937"),
+            text=[f"= Rp {latest_data['total_impact']:,.0f} M"],
+            textposition='top center',
+            name='Total Dampak',
             showlegend=False
+        ))
+        
+        fig_wf.update_layout(
+            title=f"Dekomposisi Dampak: Investasi → Multiplier → Total ({selected_year})",
+            height=400,
+            barmode='group',
+            xaxis_title="Komponen",
+            yaxis_title="Nilai (Juta Rupiah)",
+            template="plotly_white"
         )
         st.plotly_chart(fig_wf, use_container_width=True)
 
