@@ -251,10 +251,16 @@ def calculate_economic_impact(province_data, province_name):
             'indirect_impact': indirect_impact,
             'total_impact': total_impact,
             'contribution_ratio': contribution_ratio,
+            'contribution_pct': contribution_ratio,  # Alias untuk konsistensi
             'investment_ratio': (pmtb / grdp_total * 100) if grdp_total > 0 else 0,
             'consumption_ratio': ((pkrt + pk_lnpert) / grdp_total * 100) if grdp_total > 0 else 0,
+            'consumption_rt_ratio': (pkrt / grdp_total * 100) if grdp_total > 0 else 0,
             'government_ratio': (pk_p / grdp_total * 100) if grdp_total > 0 else 0,
-            'net_export_ratio': (net_ekspor / grdp_total * 100) if grdp_total > 0 else 0
+            'export_ratio': (ekspor / grdp_total * 100) if grdp_total > 0 else 0,
+            'import_ratio': (abs(impor) / grdp_total * 100) if grdp_total > 0 else 0,
+            'net_export_ratio': (net_ekspor / grdp_total * 100) if grdp_total > 0 else 0,
+            'infra_invest': infra_investment,
+            'total_impact_val': total_impact
         }
     
     return results
@@ -430,7 +436,7 @@ def create_comparison_chart(all_impact_data, metric='total_impact'):
 def generate_policy_recommendations(impact_data, province_name):
     """
     Menghasilkan interpretasi ekonomi dan rekomendasi kebijakan berbasis data
-    Menggunakan logika Regional Economist untuk analisis struktural
+    Menggunakan logika Regional Economist untuk analisis struktural mendetail
     """
     if not impact_data:
         return None
@@ -442,99 +448,142 @@ def generate_policy_recommendations(impact_data, province_name):
     # Ekstrak rasio kunci
     invest_ratio = data['investment_ratio']
     consume_ratio = data['consumption_ratio']
+    consume_rt_ratio = data.get('consumption_rt_ratio', consume_ratio * 0.85)  # Estimasi jika tidak ada
     gov_ratio = data['government_ratio']
+    export_ratio = data['export_ratio']
+    import_ratio = data['import_ratio']
     net_export_ratio = data['net_export_ratio']
     multiplier = data['multiplier']
+    infra_invest = data.get('infra_invest', data.get('infrastructure_investment', 0))
+    total_impact = data.get('total_impact_val', data.get('total_impact', 0))
+    contribution_pct = data.get('contribution_pct', data.get('contribution_ratio', 0))
     
-    # --- DIAGNOSIS TIPE EKONOMI ---
+    # --- 1. DIAGNOSIS STRUKTUR EKONOMI (DETAILED) ---
+    eco_type = ""
+    structure_narrative = []
+    
     if invest_ratio > 35:
-        eco_type = "Investment-Driven Economy"
-        eco_desc = f"Ekonomi {province_name} didorong oleh investasi tinggi ({invest_ratio:.1f}% PDRB). Ini mengindikasikan fase akselerasi pembangunan infrastruktur atau ekspansi sektor ekstraktif/manufaktur."
+        eco_type = "Investment-Led Growth"
+        structure_narrative.append(f"**PMTB sangat tinggi ({invest_ratio:.1f}%)** → Ekonomi didorong oleh investasi besar-besaran. Ini tipikal daerah yang sedang mengalami *boom* pembangunan infrastruktur atau ekspansi sektor ekstraktif (pertambangan/smelting).")
+        structure_narrative.append(f"**Konsumsi RT hanya {consume_rt_ratio:.1f}%** → Ekonomi TIDAK konsumtif. Ini struktur yang sehat untuk daerah berkembang karena menunjukkan diversifikasi ekonomi ke arah produksi, bukan sekadar konsumsi.")
+        structure_narrative.append(f"**Insight:** {province_name} sedang dalam fase akselerasi pembentukan modal. Investasi ini kemungkinan besar terkait dengan pengembangan industri besar dan infrastruktur pendukungnya.")
     elif consume_ratio > 55:
-        eco_type = "Consumption-Driven Economy"
-        eco_desc = f"Ekonomi {province_name} didominasi konsumsi rumah tangga ({consume_ratio:.1f}% PDRB). Ini menunjukkan pasar domestik yang kuat namun berpotensi bergantung pada impor."
-    elif net_export_ratio > 15:
-        eco_type = "Export-Oriented Economy"
-        eco_desc = f"Ekonomi {province_name} berorientasi ekspor dengan surplus neraca perdagangan yang kuat ({net_export_ratio:.1f}% PDRB)."
-    elif net_export_ratio < -15:
-        eco_type = "Import-Dependent Economy"
-        eco_desc = f"Ekonomi {province_name} mengalami defisit neraca perdagangan yang signifikan ({net_export_ratio:.1f}% PDRB), mengindikasikan ketergantungan tinggi pada barang modal/impor."
+        eco_type = "Consumption-Driven"
+        structure_narrative.append(f"**Dominasi Konsumsi ({consume_ratio:.1f}%)** → Ekonomi sangat bergantung pada daya beli masyarakat. Pertumbuhan cenderung stabil namun kurang transformasional tanpa dorongan investasi.")
+        structure_narrative.append(f"**PMTB rendah ({invest_ratio:.1f}%)** → Kapasitas produksi masa depan belum terbangun optimal. Risiko ketergantungan pada pasokan barang dari luar daerah.")
+        structure_narrative.append(f"**Insight:** Perlu stimulus investasi untuk mengubah pola konsumsi menjadi produktif (UMKM, manufaktur lokal).")
+    elif export_ratio > 30 and net_export_ratio > 0:
+        eco_type = "Export-Oriented"
+        structure_narrative.append(f"**Ekspor Besar ({export_ratio:.1f}%)** → Sektor eksternal adalah motor utama pertumbuhan.")
+        structure_narrative.append(f"**Surplus Neraca ({net_export_ratio:.1f}%)** → Daya saing produk daerah kuat di pasar global.")
+        structure_narrative.append(f"**Insight:** Daerah ini adalah basis produksi untuk pasar global. Tantangannya adalah memastikan nilai tambah dinikmati lokal (hilirisasi).")
     else:
-        eco_type = "Balanced Mixed Economy"
-        eco_desc = f"Ekonomi {province_name} menunjukkan keseimbangan antara konsumsi, investasi, dan perdagangan eksternal."
+        eco_type = "Transitional / Mixed Economy"
+        structure_narrative.append(f"**Struktur Seimbang:** Belum ada satu komponen yang mendominasi ekstrem. Ekonomi dalam fase transisi.")
+        if net_export_ratio < 0:
+            structure_narrative.append(f"**Defisit Neto ({net_export_ratio:.1f}%)** → Ketergantungan input luar masih tinggi.")
+
+    # --- 2. ANALISIS KETERBUKAAN (EKSPOR-IMPOR) - DETAILED ---
+    trade_narrative = []
+    if export_ratio > 50 or import_ratio > 30:
+        trade_narrative.append(f"**Ekspor sangat besar ({export_ratio:.1f}% dari PDRB!)** → Sektor eksternal adalah motor utama.")
+        trade_narrative.append(f"**Impor juga besar ({import_ratio:.1f}%)** → Ketergantungan pada barang modal dan input produksi dari luar.")
+        
+        if net_export_ratio < -20:
+            trade_narrative.append(f"**Net Ekspor NEGATIF ({net_export_ratio:.1f}%)** → Meskipun ekspor besar, nilai impor lebih besar lagi dalam perhitungan neraca regional.")
+            trade_narrative.append(f"**Insight Krusial:** Ini adalah karakteristik daerah *resource-based economy* yang sedang berkembang:")
+            trade_narrative.append(f"   • Ekspor didominasi komoditas mentah/setengah jadi.")
+            trade_narrative.append(f"   • Impor terdiri dari mesin, alat berat, bahan baku pendukung, dan barang konsumsi untuk pekerja migran.")
+            trade_narrative.append(f"   • {province_name} berfungsi sebagai 'pabrik' untuk pasar global, bukan untuk konsumsi domestik.")
+        elif net_export_ratio > 10:
+            trade_narrative.append(f"**Surplus Kuat:** Menunjukkan nilai tambah yang berhasil ditahan di daerah atau basis sumber daya alam yang sangat efisien.")
+    else:
+        trade_narrative.append(f"**Keterbukaan Moderat:** Ekspor ({export_ratio:.1f}%) dan Impor ({import_ratio:.1f}%) dalam batas wajar. Ekonomi lebih berorientasi domestik.")
+
+    # --- 3. DAMPAK INFRASTRUKTUR - DETAILED ---
+    impact_narrative = []
+    impact_narrative.append(f"**Estimasi Investasi Infrastruktur:** Rp {infra_invest:,.0f} Juta (40% dari PMTB)")
+    impact_narrative.append(f"**Total Dampak Ekonomi (Multiplier {multiplier:.1f}x):** Rp {total_impact:,.0f} Juta")
+    impact_narrative.append(f"**Kontribusi terhadap PDRB:** {contribution_pct:.2f}% → {'Sangat Signifikan!' if contribution_pct > 20 else 'Signifikan' if contribution_pct > 10 else 'Moderat'}")
+    impact_narrative.append(f"**Artinya:** Setiap Rp 1 triliun investasi infrastruktur menghasilkan Rp {multiplier:.2f} triliun dampak ekonomi total bagi {province_name}.")
+
+    full_interpretation = {
+        "structure": "\n".join([f"1. STRUKTUR EKONOMI: {eco_type}"] + structure_narrative),
+        "trade": "\n".join(["2. KETERBUKAAN EKONOMI: " + ("Paradoks Ekspor-Impor" if net_export_ratio < -20 else "Kekuatan Ekspor" if net_export_ratio > 10 else "Keterbukaan Moderat")] + trade_narrative),
+        "impact": "\n".join(["3. DAMPAK INFRASTRUKTUR"] + impact_narrative)
+    }
     
-    # --- REKOMENDASI KEBIJAKAN ---
+    # --- REKOMENDASI KEBIJAKAN (SPECIFIC & ACTIONABLE) ---
     policies = []
-    risks = []
     
-    # Kebijakan berdasarkan investasi
-    if invest_ratio > 40:
+    # Prioritas 1: Berdasarkan Tipe Ekonomi
+    if "Investment" in eco_type:
         policies.append({
-            "priority": "HIGH",
-            "category": "Investasi",
-            "recommendation": "Optimalisasi Iklim Investasi & Linkage Industry",
-            "detail": "Permudah perizinan proyek strategis dan dorong penggunaan material lokal (TKDN) untuk memaksimalkan multiplier effect di daerah."
+            "priority": "PRIORITAS 1: INFRASTRUKTUR PRODUKTIF",
+            "desc": f"Karena investasi tinggi ({invest_ratio:.1f}%) dan potensi defisit neraca:",
+            "actions": [
+                "• **Pelabuhan & Logistik:** Turunkan biaya impor barang modal dan ekspor komoditas.",
+                "• **Listrik & Energi:** Pastikan pasokan energi stabil untuk support industri hilirisasi agar nilai tambah tetap di daerah.",
+                "• **Jalan Produksi:** Bangun konektivitas khusus dari pusat produksi (tambang/kawasan industri) ke pelabuhan."
+            ]
         })
-        risks.append("Risiko Over-Heating: Waspadai inflasi daerah akibat permintaan agregat terlalu tinggi.")
-    elif invest_ratio < 20:
+    elif "Consumption" in eco_type:
         policies.append({
-            "priority": "HIGH",
-            "category": "Investasi",
-            "recommendation": "Percepatan Belanja Modal Infrastruktur",
-            "detail": "Tingkatkan alokasi APBD untuk infrastruktur dasar (jalan, irigasi, listrik) guna mendorong pertumbuhan ekonomi jangka panjang."
+            "priority": "PRIORITAS 1: STIMULUS PRODUKSI LOKAL",
+            "desc": f"Karena konsumsi tinggi ({consume_ratio:.1f}%) namun investasi rendah:",
+            "actions": [
+                "• **Hilirisasi UMKM:** Arahkan konsumsi masyarakat untuk membeli produk lokal (program 'Bangga Buatan Daerah').",
+                "• **Kawasan Industri Kecil:** Sediakan lahan dan fasilitas bersama untuk produsen lokal mensuplai kebutuhan daerah.",
+                "• **Digitalisasi Pasar:** Perluas jangkauan pemasaran produk lokal."
+            ]
         })
     
-    # Kebijakan berdasarkan konsumsi
-    if consume_ratio > 60:
-        policies.append({
-            "priority": "MEDIUM",
-            "category": "Konsumsi",
-            "recommendation": "Stimulus UMKM & Digitalisasi Pasar",
-            "detail": "Fokus pada penguatan rantai pasok lokal dan perluasan akses pasar digital agar konsumsi menyerap produk dalam negeri, bukan impor."
-        })
-        risks.append("Ketergantungan Impor: Konsumsi tinggi tanpa produksi lokal akan memperlebar defisit transaksi berjalan.")
-    
-    # Kebijakan berdasarkan neraca perdagangan
+    # Prioritas 2: Berdasarkan Neraca Perdagangan
     if net_export_ratio < -20:
         policies.append({
-            "priority": "HIGH",
-            "category": "Perdagangan",
-            "recommendation": "Substitusi Impor & Hilirisasi",
-            "detail": "Identifikasi komoditas impor terbesar dan berikan insentif produksi dalam negeri. Wajibkan pengolahan bahan mentah di daerah sebelum diekspor."
+            "priority": "PRIORITAS 2: SUBSTITUSI IMPOR REGIONAL",
+            "desc": "Mengurangi kebocoran ekonomi akibat impor tinggi:",
+            "actions": [
+                "• **Industri Penunjang:** Kembangkan industri lokal (semen, bata, pakan ternak) untuk mensuplai kebutuhan proyek-proyek investasi besar.",
+                "• **Program Kemitraan:** Wajibkan investor besar (tambang/smelter) bermitra dengan UMKM lokal untuk suplai non-core.",
+                "• **Zona Ekonomi Khusus:** Jika memungkinkan, dorong status KEK untuk menarik industri substitusi impor."
+            ]
         })
-        risks.append("Kerentanan Nilai Tukar: Fluktuasi kurs dapat mengguncang biaya produksi dan daya beli masyarakat.")
-    elif net_export_ratio > 20:
+    elif export_ratio > 30:
         policies.append({
-            "priority": "MEDIUM",
-            "category": "Perdagangan",
-            "recommendation": "Diversifikasi Pasar Ekspor",
-            "detail": "Kurangi ketergantungan pada satu negara tujuan ekspor dan kembangkan produk bernilai tambah tinggi."
+            "priority": "PRIORITAS 2: HILIRISASI & NILAI TAMBAH",
+            "desc": "Memastikan kekayaan alam tidak terangkut mentah:",
+            "actions": [
+                "• **Wajib Olah Dalam Daerah:** Perketat regulasi agar komoditas diekspor dalam bentuk setengah jadi/jadi.",
+                "• **Smelter & Refinery:** Berikan insentif fiskal daerah bagi investor yang membangun fasilitas pengolahan.",
+                "• **Diversifikasi Pasar:** Cari pasar ekspor baru selain negara tradisional untuk mengurangi risiko."
+            ]
         })
-    
-    # Kebijakan berdasarkan multiplier
-    if multiplier > 2.0:
-        policies.append({
-            "priority": "MEDIUM",
-            "category": "Efisiensi",
-            "recommendation": "Pertahankan Momentum Pembangunan",
-            "detail": f"Dengan multiplier {multiplier:.2f}x, efektivitas investasi infrastruktur sangat tinggi. Lanjutkan proyek prioritas dengan monitoring ketat."
-        })
-    else:
-        policies.append({
-            "priority": "MEDIUM",
-            "category": "Efisiensi",
-            "recommendation": "Peningkatan Kualitas Belanja Infrastruktur",
-            "detail": f"Multiplier {multiplier:.2f}x masih dapat ditingkatkan. Fokus pada infrastruktur produktif yang terhubung dengan pusat ekonomi."
-        })
-    
-    # Jika tidak ada risiko spesifik
-    if not risks:
-        risks.append("Stabilitas makroekonomi relatif terjaga. Pertahankan kebijakan saat ini dengan monitoring rutin.")
+
+    # Prioritas 3: Human Capital & Sosial
+    policies.append({
+        "priority": "PRIORITAS 3: HUMAN CAPITAL & INKLUSI",
+        "desc": f"Dengan investasi {invest_ratio:.1f}% dari PDRB, pastikan manfaat dirasakan warga lokal:",
+        "actions": [
+            "• **Link-and-Match Vocational Training:** Sinkronisasi kurikulum SMK/Politeknik lokal dengan kebutuhan industri dominan (misal: teknologi nikel, alat berat).",
+            "• **Local Content Requirement:** Dorong regulasi daerah yang mewajibkan penyerapan tenaga kerja lokal minimal persentase tertentu.",
+            "• **CSR Terarah:** Arahkan dana CSR perusahaan besar untuk beasiswa dan pelatihan keterampilan warga sekitar."
+        ]
+    })
+
+    # --- ANALISIS RISIKO ---
+    risks = []
+    if net_export_ratio < -50:
+        risks.append("⚠️ **Kerentanan Nilai Tukar & Global:** Defisit neraca yang sangat dalam membuat ekonomi daerah sangat sensitif terhadap fluktuasi kurs dan harga komoditas global.")
+    if invest_ratio > 45:
+        risks.append("⚠️ **Risiko Over-Heating:** Investasi yang terlalu dominan dapat memicu inflasi daerah (harga tanah, bahan bangunan) jika tidak diimbangi peningkatan suplai.")
+    if consume_ratio > 60:
+        risks.append("⚠️ **Stagnasi Produktivitas:** Ketergantungan pada konsumsi berisiko membuat ekonomi stagnan jika tidak ada injeksi teknologi/investasi baru.")
     
     return {
         "year": latest_year,
         "eco_type": eco_type,
-        "eco_description": eco_desc,
+        "interpretation": full_interpretation,
         "policies": policies,
         "risks": risks,
         "key_metrics": {
@@ -709,14 +758,22 @@ with tab2:
     st.header(f"🧠 Analisis Kebijakan: {selected_province}")
     
     if policy_rec:
-        # Diagnosis box
-        st.markdown(f"""
-        <div class="diagnosis-box">
-            <h3 style="margin:0; color:white;">🔍 Diagnosis Struktur Ekonomi</h3>
-            <h4 style="margin:5px 0 15px 0; color:#fbbf24;">{policy_rec['eco_type']}</h4>
-            <p style="margin:0; line-height:1.6;">{policy_rec['eco_description']}</p>
-        </div>
-        """, unsafe_allow_html=True)
+        # Tampilkan interpretasi mendetail (3 bagian)
+        if 'interpretation' in policy_rec:
+            interp = policy_rec['interpretation']
+            
+            # 1. Struktur Ekonomi
+            st.subheader("🔍 Interpretasi Regional Economist")
+            st.markdown(interp.get('structure', ''))
+            st.markdown("---")
+            
+            # 2. Keterbukaan Ekonomi
+            st.markdown(interp.get('trade', ''))
+            st.markdown("---")
+            
+            # 3. Dampak Infrastruktur
+            st.markdown(interp.get('impact', ''))
+            st.markdown("---")
         
         # Key metrics summary
         km = policy_rec['key_metrics']
@@ -729,36 +786,31 @@ with tab2:
         
         st.markdown("---")
         
-        # Recommendations
-        st.subheader("💡 Rekomendasi Kebijakan")
+        # Recommendations dengan format baru
+        st.subheader("📋 Rekomendasi Policy (Top 0.000001% Economist View)")
         
         for policy in policy_rec['policies']:
-            priority_class = "priority-high" if policy['priority'] == "HIGH" else "priority-medium"
             st.markdown(f"""
-            <div class="policy-box {priority_class}">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="font-weight:bold; color:#1f2937; font-size:1.1rem;">
-                        {policy['category']}: {policy['recommendation']}
-                    </span>
-                    <span style="background-color:{'#ef4444' if policy['priority']=='HIGH' else '#f59e0b'}; 
-                                color:white; padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:bold;">
-                        {policy['priority']} PRIORITY
-                    </span>
-                </div>
-                <p style="color:#4b5563; margin:0; line-height:1.6;">{policy['detail']}</p>
-            </div>
+            <div class="policy-box">
+                <h4 style="margin:0 0 8px 0; color:#1f2937;">{policy['priority']}</h4>
+                <p style="color:#6b7280; margin:0 0 10px 0; font-style:italic;">{policy['desc']}</p>
+                <ul style="margin:0; padding-left:20px; line-height:1.8;">
             """, unsafe_allow_html=True)
-        
-        st.markdown("---")
+            
+            for action in policy['actions']:
+                st.markdown(f"<li>{action}</li>", unsafe_allow_html=True)
+            
+            st.markdown("</ul></div>", unsafe_allow_html=True)
         
         # Risks
-        st.subheader("⚠️ Analisis Risiko")
-        for risk in policy_rec['risks']:
-            st.markdown(f"""
-            <div class="risk-box">
-                <p style="color:#7f1d1d; margin:0; line-height:1.6;">{risk}</p>
-            </div>
-            """, unsafe_allow_html=True)
+        if policy_rec['risks']:
+            st.subheader("⚠️ Analisis Risiko")
+            for risk in policy_rec['risks']:
+                st.markdown(f"""
+                <div class="risk-box">{risk}</div>
+                """, unsafe_allow_html=True)
+        
+        st.markdown("---")
         
         # Waterfall chart untuk multiplier effect
         st.subheader("📊 Decomposition Dampak Ekonomi")
