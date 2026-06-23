@@ -51,14 +51,84 @@ st.markdown("""
 # Load data dari JSON
 @st.cache_data
 def load_grdp_data():
-    """Load GRDP data dari file JSON"""
+    """Load GRDP data dari file JSON dengan multiple fallback options"""
+    
+    # Opsi 1: Coba dari GitHub (URL yang benar)
+    github_url = 'https://raw.githubusercontent.com/bernardiava/BPS-2025/main/grdp_full.json'
+    
+    # Opsi 2: Coba dari file lokal (jika diupload ke workspace)
+    local_file = 'grdp_full.json'
+    
+    # Opsi 3: Coba dari folder data (struktur umum)
+    local_file_data = 'data/grdp_full.json'
+    
+    # Step 1: Cek URL GitHub
     try:
-        with open('https://raw.githubusercontent.com/bernardiava/BPS-2025/main/grdp_full.json', 'r') as f:
-            data = json.load(f)
-        return data
+        import requests
+        response = requests.get(github_url, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            st.success("✅ Data berhasil dimuat dari GitHub!")
+            return data
+        elif response.status_code == 404:
+            st.warning("⚠️ File tidak ditemukan di GitHub. Mencoba sumber lain...")
+        else:
+            st.warning(f"⚠️ GitHub response: {response.status_code}. Mencoba sumber lain...")
+            
+    except requests.exceptions.ConnectionError:
+        st.warning("⚠️ Tidak dapat terhubung ke GitHub. Mencoba sumber lokal...")
     except Exception as e:
-        st.error(f"Gagal memuat data: {e}")
-        return {}
+        st.warning(f"⚠️ Error GitHub: {e}. Mencoba sumber lokal...")
+    
+    # Step 2: Coba file lokal di root
+    try:
+        with open(local_file, 'r') as f:
+            data = json.load(f)
+            st.success("✅ Data berhasil dimuat dari file lokal!")
+            return data
+    except FileNotFoundError:
+        st.warning(f"⚠️ File {local_file} tidak ditemukan. Mencoba folder data...")
+    except Exception as e:
+        st.warning(f"⚠️ Error file lokal: {e}")
+    
+    # Step 3: Coba file di folder data
+    try:
+        with open(local_file_data, 'r') as f:
+            data = json.load(f)
+            st.success("✅ Data berhasil dimuat dari folder data!")
+            return data
+    except FileNotFoundError:
+        st.error(f"❌ File tidak ditemukan di semua lokasi yang dicoba.")
+    except Exception as e:
+        st.error(f"❌ Error: {e}")
+    
+    # Step 4: Jika semua gagal, tampilkan panduan
+    st.info("""
+    **📌 Panduan Upload File:**
+    
+    1. **Jika menggunakan Streamlit Cloud:**
+       - Upload file `grdp_full.json` ke repository GitHub Anda
+       - Pastikan file berada di root folder atau folder `data/`
+       
+    2. **Jika menggunakan lokal:**
+       - Letakkan file di folder yang sama dengan script ini
+       
+    3. **Atau upload manual:**
+       - Gunakan sidebar di bawah untuk upload file JSON langsung
+    """)
+    
+    # Tawarkan upload manual
+    uploaded_file = st.file_uploader("Upload file grdp_full.json", type="json")
+    if uploaded_file is not None:
+        try:
+            data = json.load(uploaded_file)
+            st.success("✅ Data berhasil diupload!")
+            return data
+        except Exception as e:
+            st.error(f"Error membaca file upload: {e}")
+    
+    return {}
 
 @st.cache_data
 def load_province_mapping():
