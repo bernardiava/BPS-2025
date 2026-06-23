@@ -758,11 +758,30 @@ st.sidebar.header("⚙️ Parameter Analisis")
 grdp_data = load_grdp_data()
 province_mapping = load_province_mapping()
 
-# Load Input-Output analysis module
+# Load Input-Output analysis module with robust error handling (similar to GRDP loading)
 @st.cache_resource
 def load_io_analyzer():
-    """Load IO analyzer with caching"""
-    return InputOutputAnalyzer()
+    """Load IO analyzer with caching and multiple fallback paths"""
+    # Try multiple possible paths for the Excel file
+    possible_paths = [
+        'indonesia-tables-as-of-june-2023.xlsx',
+        './indonesia-tables-as-of-june-2023.xlsx',
+        '/workspace/indonesia-tables-as-of-june-2023.xlsx',
+        'data/indonesia-tables-as-of-june-2023.xlsx',
+        '../indonesia-tables-as-of-june-2023.xlsx'
+    ]
+    
+    for path in possible_paths:
+        try:
+            analyzer = InputOutputAnalyzer(excel_path=path)
+            if analyzer.load_table(2020):
+                return analyzer
+        except Exception as e:
+            print(f"Failed to load from {path}: {e}")
+            continue
+    
+    # Return analyzer even if load failed, so we can show proper error in UI
+    return InputOutputAnalyzer(excel_path='indonesia-tables-as-of-june-2023.xlsx')
 
 io_analyzer = load_io_analyzer()
 io_loaded = io_analyzer.load_table(2020)
