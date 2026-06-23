@@ -761,8 +761,8 @@ province_mapping = load_province_mapping()
 # Load Input-Output analysis module with robust error handling (similar to GRDP loading)
 @st.cache_resource
 def load_io_analyzer():
-    """Load IO analyzer with caching and multiple fallback paths"""
-    # Try multiple possible paths for the Excel file
+    """Load IO analyzer with caching and multiple fallback paths - similar to GRDP loading"""
+    # Try multiple possible paths for the Excel file (same pattern as GRDP JSON loading)
     possible_paths = [
         'indonesia-tables-as-of-june-2023.xlsx',
         './indonesia-tables-as-of-june-2023.xlsx',
@@ -771,20 +771,23 @@ def load_io_analyzer():
         '../indonesia-tables-as-of-june-2023.xlsx'
     ]
     
+    io_loaded_successfully = False
+    loaded_path = None
+    
     for path in possible_paths:
         try:
             analyzer = InputOutputAnalyzer(excel_path=path)
             if analyzer.load_table(2020):
-                return analyzer
+                st.success(f"✅ Tabel Input-Output berhasil dimuat dari: {path}")
+                return analyzer, True
         except Exception as e:
             print(f"Failed to load from {path}: {e}")
             continue
     
-    # Return analyzer even if load failed, so we can show proper error in UI
-    return InputOutputAnalyzer(excel_path='indonesia-tables-as-of-june-2023.xlsx')
+    # If all paths fail, return None and False
+    return None, False
 
-io_analyzer = load_io_analyzer()
-io_loaded = io_analyzer.load_table(2020)
+io_analyzer, io_loaded = load_io_analyzer()
 
 if not grdp_data:
     st.error("Data tidak tersedia. Pastikan file grdp_full.json ada di workspace.")
