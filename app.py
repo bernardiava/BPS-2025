@@ -1095,167 +1095,681 @@ with tab3:
             fig_bar.update_layout(height=400)
             st.plotly_chart(fig_bar, use_container_width=True)
 
-# Tab baru untuk Input-Output Analysis
-tab5 = st.tabs(["📊 Dashboard Dampak", "🧠 Interpretasi & Kebijakan", "📋 Breakdown Data", "🗺️ Komparasi Nasional", "🏭 Analisis Input-Output"])[4]
+# Tab baru untuk Input-Output Analysis - Redesigned dengan Premium UI/UX
+tab5 = st.tabs(["📊 Dashboard Dampak", "🧠 Interpretasi & Kebijakan", "📋 Breakdown Data", "🗺️ Komparasi Nasional", "🏛️ Input-Output Analysis"])[4]
 
 with tab5:
-    st.header("🏭 Analisis Input-Output Indonesia 2020")
+    # Hero Section dengan Gradient Background
+    st.markdown("""
+    <style>
+        .io-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 3rem;
+            border-radius: 20px;
+            color: white;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+        }
+        .io-hero h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .io-hero p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            max-width: 800px;
+        }
+        .metric-premium {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .metric-premium:hover {
+            transform: translateY(-5px);
+        }
+        .sector-card {
+            background: white;
+            padding: 1.2rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border-left: 4px solid #667eea;
+        }
+        .highlight-box {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin: 1rem 0;
+        }
+        .info-box {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin: 1rem 0;
+        }
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
     
     if io_loaded:
-        st.markdown("""
-        Analisis Input-Output menggunakan **Leontief Inverse Matrix** untuk mengukur multiplier effect 
-        dari setiap sektor industri terhadap perekonomian nasional. Data dari BPS mencakup 35 sektor industri.
-        """)
+        # Hero Section
+        st.markdown(f"""
+        <div class="io-hero">
+            <h1>🏛️ Input-Output Analysis Indonesia 2020</h1>
+            <p>Analisis komprehensif menggunakan <strong>Leontief Inverse Matrix</strong> untuk mengukur multiplier effect, 
+            backward-forward linkages, dan dampak ekonomi dari 35 sektor industri terhadap perekonomian nasional.</p>
+            <p style="margin-top: 1rem; font-size: 0.95rem; opacity: 0.9;">
+                📊 Data: Badan Pusat Statistik (BPS) | Metodologi: Wassily Leontief Input-Output Model
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # IO Analysis sections
-        io_tab1, io_tab2, io_tab3 = st.tabs(["Multiplier Sectors", "Impact Simulation", "Sector Linkages"])
+        # Key Metrics Overview
+        multipliers = io_analyzer.get_output_multipliers()
+        avg_multiplier = np.mean(list(multipliers.values()))
+        max_mult_sector = max(multipliers.items(), key=lambda x: x[1])
+        construction_mult = multipliers.get('Construction', 0)
         
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        
+        with col_m1:
+            st.markdown(f"""
+            <div class="metric-premium">
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.5rem;">📈 Rata-rata Multiplier</div>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #667eea;">{avg_multiplier:.3f}x</div>
+                <div style="font-size: 0.8rem; color: #888;">Seluruh sektor</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col_m2:
+            st.markdown(f"""
+            <div class="metric-premium">
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.5rem;">🚀 Multiplier Tertinggi</div>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #764ba2;">{max_mult_sector[1]:.3f}x</div>
+                <div style="font-size: 0.75rem; color: #888;">{max_mult_sector[0][:25]}...</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col_m3:
+            st.markdown(f"""
+            <div class="metric-premium">
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.5rem;">🏗️ Konstruksi</div>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #f093fb;">{construction_mult:.3f}x</div>
+                <div style="font-size: 0.8rem; color: #888;">Sektor infrastruktur</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col_m4:
+            st.markdown(f"""
+            <div class="metric-premium">
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.5rem;">🏭 Total Sektor</div>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #4facfe;">{len(multipliers)}</div>
+                <div style="font-size: 0.8rem; color: #888;">Industri dianalisis</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
+        
+        # Main Analysis Tabs dengan Enhanced Design
+        io_tab1, io_tab2, io_tab3 = st.tabs([
+            "📊 Sector Multipliers", 
+            "💰 Investment Impact Simulator", 
+            "🔗 Linkages Analysis"
+        ])
+        
+        # ==================== TAB 1: SECTOR MULTIPLIERS ====================
         with io_tab1:
-            st.subheader("📈 Output Multipliers per Sektor")
+            st.markdown("### 📈 Output Multipliers: Mengukur Dampak Ekonomi per Sektor")
             
-            # Get all multipliers
+            # Create multipliers dataframe
             multipliers_df = pd.DataFrame([
                 {'Sector': sector, 'Output Multiplier': mult}
-                for sector, mult in io_analyzer.get_output_multipliers().items()
+                for sector, mult in multipliers.items()
             ]).sort_values('Output Multiplier', ascending=False)
+            multipliers_df['Rank'] = range(1, len(multipliers_df)+1)
             
-            # Top 10 bar chart
-            st.subheader("Top 10 Sektor dengan Multiplier Tertinggi")
-            fig_top10 = px.bar(
-                multipliers_df.head(10),
-                x='Output Multiplier',
-                y='Sector',
-                orientation='h',
-                title='Sektor dengan Efek Multiplier Terbesar',
-                color='Output Multiplier',
-                color_continuous_scale='Viridis'
-            )
-            fig_top10.update_layout(height=500)
-            st.plotly_chart(fig_top10, use_container_width=True)
+            def categorize_multiplier(x):
+                if x > 2.0:
+                    return 'Very High (>2.0)'
+                elif x >= 1.5:
+                    return 'High (1.5-2.0)'
+                elif x >= 1.0:
+                    return 'Moderate (1.0-1.5)'
+                else:
+                    return 'Low (<1.0)'
             
-            # Full table
-            st.subheader("Semua Sektor (35 Industri)")
-            st.dataframe(
-                multipliers_df.style.format({'Output Multiplier': '{:.4f}'}),
-                use_container_width=True,
-                hide_index=True
-            )
+            multipliers_df['Category'] = multipliers_df['Output Multiplier'].apply(categorize_multiplier)
             
-            # Explanation
-            st.info("""
-            **Interpretasi Output Multiplier:**
-            - Nilai > 2.0: Sektor dengan dampak ekonomi sangat tinggi
-            - Nilai 1.5 - 2.0: Sektor dengan dampak ekonomi tinggi  
-            - Nilai < 1.5: Sektor dengan dampak ekonomi moderat
+            # Visualisasi Top 10 dengan Enhanced Styling
+            col_chart, col_info = st.columns([2, 1])
             
-            Contoh: Multiplier Konstruksi = 2.01 berarti setiap $1 investasi di konstruksi 
-            menghasilkan $2.01 total output ekonomi (langsung + tidak langsung).
-            """)
+            with col_chart:
+                st.markdown("**🏆 Top 10 Sektor dengan Multiplier Tertinggi**")
+                
+                # Custom color scale based on multiplier value
+                colors = ['#FF6B6B' if x > 2.0 else '#FFD93D' if x > 1.5 else '#6BCB77' if x > 1.0 else '#4D96FF' 
+                         for x in multipliers_df.head(10)['Output Multiplier']]
+                
+                fig_top10 = go.Figure(data=[
+                    go.Bar(
+                        x=multipliers_df.head(10)['Output Multiplier'],
+                        y=multipliers_df.head(10)['Sector'],
+                        orientation='h',
+                        marker_color=colors,
+                        marker_line_color='rgba(0,0,0,0.3)',
+                        marker_line_width=1,
+                        hovertemplate='<b>%{y}</b><br>Multiplier: %{x:.4f}x<extra></extra>'
+                    )
+                ])
+                
+                fig_top10.update_layout(
+                    height=550,
+                    xaxis_title="Output Multiplier (x)",
+                    yaxis_title="",
+                    showlegend=False,
+                    plot_bgcolor='rgba(240,240,240,0.5)',
+                    paper_bgcolor='white',
+                    font=dict(family="Segoe UI", size=12),
+                    xaxis=dict(showgrid=True, gridwidth=1, gridcolor='rgba(0,0,0,0.1)'),
+                    yaxis=dict(showgrid=False),
+                    margin=dict(l=50, r=50, t=50, b=50)
+                )
+                
+                st.plotly_chart(fig_top10, use_container_width=True)
+            
+            with col_info:
+                st.markdown("**📊 Kategori Multiplier**")
+                
+                category_counts = multipliers_df['Category'].value_counts()
+                
+                for cat in ['Very High (>2.0)', 'High (1.5-2.0)', 'Moderate (1.0-1.5)', 'Low (<1.0)']:
+                    count = category_counts.get(cat, 0)
+                    emoji = cat.split()[0]
+                    st.markdown(f"""
+                    <div class="sector-card" style="padding: 0.8rem; margin-bottom: 0.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>{cat}</span>
+                            <span style="font-weight: 700; font-size: 1.2rem;">{count}</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown("""
+                <div class="highlight-box">
+                    <strong>💡 Insight:</strong><br>
+                    Sektor dengan multiplier > 2.0 memiliki dampak ekonomi terbesar. Setiap $1 investasi menghasilkan >$2 output total melalui efek langsung dan tidak langsung.
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Full Table dengan Enhanced Formatting
+            st.markdown("### 📋 Complete Ranking: 35 Sektor Industri")
+            
+            # Color-coded table
+            def color_multiplier(val):
+                if val > 2.0:
+                    return 'background-color: #FFEBEE; color: #C62828; font-weight: bold'
+                elif val >= 1.5:
+                    return 'background-color: #FFF3E0; color: #E65100'
+                elif val >= 1.0:
+                    return 'background-color: #E8F5E9; color: #2E7D32'
+                else:
+                    return 'background-color: #E3F2FD; color: #1565C0'
+            
+            styled_df = multipliers_df[['Rank', 'Sector', 'Output Multiplier', 'Category']].style\
+                .format({'Output Multiplier': '{:.4f}x'})\
+                .applymap(color_multiplier, subset=['Output Multiplier'])\
+                .hide(axis='index')
+            
+            st.dataframe(styled_df, use_container_width=True, height=600)
+            
+            # Educational Section
+            st.markdown("""
+            <div class="info-box">
+                <h4>🎓 Memahami Output Multiplier</h4>
+                <p><strong>Rumus:</strong> Multiplier = Σ(L_ij) dimana L = (I-A)^(-1) adalah Leontief Inverse Matrix</p>
+                <p><strong>Interpretasi:</strong></p>
+                <ul>
+                    <li><strong>Multiplier 2.0x</strong>: Setiap $1 investasi → $2.00 total output ($1 langsung + $1 tidak langsung)</li>
+                    <li><strong>Multiplier 1.5x</strong>: Setiap $1 investasi → $1.50 total output ($1 langsung + $0.50 tidak langsung)</li>
+                </ul>
+                <p><strong>Kegunaan:</strong> Membantu pembuat kebijakan menentukan prioritas investasi untuk dampak ekonomi maksimal.</p>
+            </div>
+            """, unsafe_allow_html=True)
         
+        # ==================== TAB 2: INVESTMENT IMPACT SIMULATOR ====================
         with io_tab2:
-            st.subheader("🔧 Simulasi Dampak Investasi")
+            st.markdown("### 💰 Investment Impact Simulator")
+            st.markdown("Simulasikan dampak ekonomi dari investasi di berbagai sektor menggunakan model Input-Output")
             
-            # Sector selection
-            selected_io_sector = st.selectbox(
-                "Pilih Sektor untuk Simulasi:",
-                options=io_analyzer.industry_names,
-                index=io_analyzer.industry_names.index('Construction') if 'Construction' in io_analyzer.industry_names else 0
-            )
+            # Two-column layout for controls
+            col_ctrl1, col_ctrl2 = st.columns([1, 1])
             
-            investment_amount = st.slider(
-                "Besaran Investasi (Juta USD):",
-                min_value=100,
-                max_value=10000,
-                value=1000,
-                step=100
-            )
+            with col_ctrl1:
+                st.markdown("**🏭 Pilih Sektor Target**")
+                # Group sectors by category for easier selection
+                sector_categories = {
+                    "🌾 Primary Sectors": ['Agriculture, hunting, forestry, and fishing', 'Mining and quarrying'],
+                    "🏭 Manufacturing": ['Food, beverages, and tobacco', 'Textiles and textile products', 
+                                        'Chemicals and chemical products', 'Basic metals and fabricated metal',
+                                        'Machinery, nec', 'Electrical and optical equipment'],
+                    "⚡ Utilities": ['Electricity, gas, and water supply'],
+                    "🏗️ Infrastructure": ['Construction', 'Inland transport', 'Water transport', 'Air transport'],
+                    "💼 Services": ['Hotels and restaurants', 'Financial intermediation', 'Real estate activities',
+                                   'Education', 'Health and social work']
+                }
+                
+                # Flatten sector list with categories
+                all_sectors_flat = []
+                for cat, sectors in sector_categories.items():
+                    for s in sectors:
+                        if s in io_analyzer.industry_names:
+                            all_sectors_flat.append(s)
+                
+                # Add remaining sectors
+                remaining = [s for s in io_analyzer.industry_names if s not in all_sectors_flat]
+                all_sectors_flat.extend(remaining)
+                
+                selected_io_sector = st.selectbox(
+                    "",
+                    options=all_sectors_flat,
+                    index=all_sectors_flat.index('Construction') if 'Construction' in all_sectors_flat else 0,
+                    label_visibility="collapsed"
+                )
+                
+                # Display sector info
+                sector_mult = multipliers.get(selected_io_sector, 0)
+                st.markdown(f"""
+                <div class="sector-card">
+                    <div style="font-size: 0.9rem; color: #666;">Output Multiplier Sektor Ini</div>
+                    <div style="font-size: 1.8rem; font-weight: 800; color: #667eea;">{sector_mult:.4f}x</div>
+                </div>
+                """, unsafe_allow_html=True)
             
-            if st.button("Hitung Dampak Ekonomi"):
+            with col_ctrl2:
+                st.markdown("**💵 Besaran Investasi**")
+                investment_amount = st.slider(
+                    "",
+                    min_value=100,
+                    max_value=50000,
+                    value=5000,
+                    step=500,
+                    label_visibility="collapsed"
+                )
+                
+                # Quick presets
+                st.markdown("**Quick Presets:**")
+                preset_cols = st.columns(4)
+                presets = [
+                    ("🏠 Small", 500),
+                    ("🏢 Medium", 2000),
+                    ("🏗️ Large", 10000),
+                    ("🌆 Mega", 50000)
+                ]
+                
+                for i, (label, value) in enumerate(presets):
+                    if preset_cols[i].button(label, key=f"preset_{i}", use_container_width=True):
+                        investment_amount = value
+                
+                st.markdown(f"""
+                <div class="sector-card" style="text-align: center;">
+                    <div style="font-size: 0.9rem; color: #666;">Investasi yang Disimulasikan</div>
+                    <div style="font-size: 1.8rem; font-weight: 800; color: #764ba2;">${investment_amount:,.0f} Juta USD</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
+            
+            # Calculate button with enhanced styling
+            calc_col1, calc_col2, calc_col3 = st.columns([1, 2, 1])
+            with calc_col2:
+                calculate_btn = st.button("🚀 Hitung Dampak Ekonomi", type="primary", use_container_width=True)
+            
+            if calculate_btn or 'impact_calculated' in st.session_state:
+                st.session_state.impact_calculated = True
+                
                 impact = io_analyzer.calculate_infrastructure_impact(investment_amount, selected_io_sector)
                 
                 if 'error' not in impact:
-                    col_sim1, col_sim2, col_sim3 = st.columns(3)
+                    # Results Header
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                                 padding: 2rem; border-radius: 15px; color: white; margin: 2rem 0;">
+                        <h3 style="margin: 0; font-size: 1.5rem;">📊 Hasil Simulasi: {selected_io_sector}</h3>
+                        <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Investasi: ${investment_amount:,.0f} Juta USD</p>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    with col_sim1:
-                        st.metric("Dampak Langsung", f"${impact['direct_impact']:,.0f} Juta")
-                    with col_sim2:
-                        st.metric("Dampak Tidak Langsung", f"${impact['indirect_impact']:,.0f} Juta")
-                    with col_sim3:
-                        st.metric("Total Dampak", f"${impact['total_impact']:,.0f} Juta")
+                    # Key Metrics
+                    res_col1, res_col2, res_col3, res_col4 = st.columns(4)
                     
-                    st.metric("Multiplier Effect", f"{impact['multiplier']:.4f}x")
+                    with res_col1:
+                        st.markdown(f"""
+                        <div class="metric-premium" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
+                            <div style="font-size: 0.85rem; color: #555;">📥 Dampak Langsung</div>
+                            <div style="font-size: 1.8rem; font-weight: 800; color: #2c3e50;">${impact['direct_impact']:,.0f}M</div>
+                        </div>
+                        """, unsafe_allow_html=True)
                     
-                    # Pie chart breakdown
-                    fig_pie_impact = px.pie(
-                        values=[impact['direct_impact'], impact['indirect_impact']],
-                        names=['Dampak Langsung', 'Dampak Tidak Langsung'],
-                        title=f'Distribusi Dampak Investasi ${investment_amount:,} Juta di {selected_io_sector}',
-                        hole=0.4
+                    with res_col2:
+                        st.markdown(f"""
+                        <div class="metric-premium" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);">
+                            <div style="font-size: 0.85rem; color: #555;">🔄 Dampak Tidak Langsung</div>
+                            <div style="font-size: 1.8rem; font-weight: 800; color: #2c3e50;">${impact['indirect_impact']:,.0f}M</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with res_col3:
+                        st.markdown(f"""
+                        <div class="metric-premium" style="background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);">
+                            <div style="font-size: 0.85rem; color: #555;">📤 Total Dampak Ekonomi</div>
+                            <div style="font-size: 1.8rem; font-weight: 800; color: #2c3e50;">${impact['total_impact']:,.0f}M</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with res_col4:
+                        mult_val = impact['multiplier']
+                        color = '#FF6B6B' if mult_val > 2.0 else '#FFD93D' if mult_val > 1.5 else '#6BCB77'
+                        st.markdown(f"""
+                        <div class="metric-premium" style="background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);">
+                            <div style="font-size: 0.85rem; color: #555;">✖️ Multiplier Effect</div>
+                            <div style="font-size: 1.8rem; font-weight: 800; color: {color};">{mult_val:.4f}x</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Charts Section
+                    chart_row1, chart_row2 = st.columns([1, 1])
+                    
+                    with chart_row1:
+                        # Pie Chart
+                        fig_pie = go.Figure(data=[
+                            go.Pie(
+                                labels=['Dampak Langsung', 'Dampak Tidak Langsung'],
+                                values=[impact['direct_impact'], impact['indirect_impact']],
+                                hole=0.4,
+                                marker_colors=['#667eea', '#764ba2'],
+                                textinfo='label+percent',
+                                hovertemplate='%{label}: $%{value:,.0f} Juta (%{percent})<extra></extra>'
+                            )
+                        ])
+                        
+                        fig_pie.update_layout(
+                            height=400,
+                            title_text="📊 Distribusi Dampak Investasi",
+                            title_font_size=16,
+                            showlegend=True,
+                            legend=dict(x=0, y=0),
+                            paper_bgcolor='white',
+                            plot_bgcolor='white'
+                        )
+                        
+                        st.plotly_chart(fig_pie, use_container_width=True)
+                    
+                    with chart_row2:
+                        # Top Beneficiaries Bar Chart
+                        top5_df = pd.DataFrame(
+                            impact['top_5_beneficiaries'],
+                            columns=['Sector', 'Impact']
+                        ).sort_values('Impact', ascending=True)
+                        
+                        fig_ben = go.Figure(data=[
+                            go.Bar(
+                                x=top5_df['Impact'],
+                                y=top5_df['Sector'],
+                                orientation='h',
+                                marker_color=['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b'],
+                                hovertemplate='%{y}: $%{x:,.2f} Juta<extra></extra>'
+                            )
+                        ])
+                        
+                        fig_ben.update_layout(
+                            height=400,
+                            title_text="🏆 5 Sektor Penerima Manfaat Terbesar",
+                            title_font_size=16,
+                            xaxis_title="Dampak Ekonomi (Juta USD)",
+                            showlegend=False,
+                            paper_bgcolor='white',
+                            plot_bgcolor='rgba(240,240,240,0.5)',
+                            xaxis=dict(showgrid=True, gridcolor='rgba(0,0,0,0.1)')
+                        )
+                        
+                        st.plotly_chart(fig_ben, use_container_width=True)
+                    
+                    # Detailed Breakdown
+                    st.markdown("### 📋 Breakdown Lengkap per Sektor")
+                    
+                    breakdown_df = pd.DataFrame([
+                        {'Sektor': k, 'Dampak (Juta USD)': v, '% dari Total': (v/impact['total_impact'])*100}
+                        for k, v in sorted(impact['sector_breakdown'].items(), key=lambda x: x[1], reverse=True)
+                    ])
+                    
+                    st.dataframe(
+                        breakdown_df.style.format({'Dampak (Juta USD)': '${:,.2f}', '% dari Total': '{:.2f}%'}),
+                        use_container_width=True,
+                        height=400
                     )
-                    st.plotly_chart(fig_pie_impact, use_container_width=True)
-                    
-                    # Top beneficiaries
-                    st.subheader("🏆 5 Sektor Penerima Manfaat Terbesar")
-                    top_benefits_df = pd.DataFrame(
-                        impact['top_5_beneficiaries'],
-                        columns=['Sektor', 'Dampak (Juta USD)']
-                    )
-                    st.dataframe(top_benefits_df.style.format({'Dampak (Juta USD)': '${:,.2f}'}), hide_index=True)
         
+        # ==================== TAB 3: LINKAGES ANALYSIS ====================
         with io_tab3:
-            st.subheader("🔗 Analisis Linkages Antar Sektor")
+            st.markdown("### 🔗 Backward & Forward Linkages Analysis")
+            st.markdown("Analisis keterkaitan antar sektor untuk mengidentifikasi sektor kunci dalam perekonomian")
             
-            linkage_sector = st.selectbox(
-                "Analisis Sektor:",
-                options=io_analyzer.industry_names,
-                index=io_analyzer.industry_names.index('Construction') if 'Construction' in io_analyzer.industry_names else 0,
-                key='linkage_select'
-            )
+            # Sector Selection
+            col_sel1, col_sel2 = st.columns([2, 1])
             
-            linkages = io_analyzer.get_sector_linkages(linkage_sector)
+            with col_sel1:
+                linkage_sector = st.selectbox(
+                    "**🏭 Pilih Sektor untuk Analisis Linkages:**",
+                    options=io_analyzer.industry_names,
+                    index=io_analyzer.industry_names.index('Construction') if 'Construction' in io_analyzer.industry_names else 0
+                )
+            
+            with col_sel2:
+                # Display quick stats
+                linkages = io_analyzer.get_sector_linkages(linkage_sector)
+                if linkages:
+                    st.markdown(f"""
+                    <div class="sector-card" style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: #666;">Klasifikasi Sektor</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #667eea;">
+                            {linkages['interpretation'].split(' - ')[0] if ' - ' in linkages['interpretation'] else linkages['interpretation']}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
             
             if linkages:
-                col_l1, col_l2 = st.columns(2)
+                # Metrics Row
+                link_col1, link_col2, link_col3, link_col4 = st.columns(4)
                 
-                with col_l1:
-                    st.metric("Backward Linkage", f"{linkages['backward_linkage']:.4f}")
-                    st.markdown(f"*Direct Input Coefficient:* {linkages['direct_input_coefficient']:.4f}")
+                with link_col1:
+                    bg_color = '#FFEBEE' if linkages['backward_linkage'] > 2.5 else '#E8F5E9'
+                    st.markdown(f"""
+                    <div class="metric-premium" style="background: linear-gradient(135deg, {bg_color} 0%, #ffffff 100%);">
+                        <div style="font-size: 0.8rem; color: #555;">⬅️ Backward Linkage</div>
+                        <div style="font-size: 2rem; font-weight: 800; color: #C62828;">{linkages['backward_linkage']:.4f}</div>
+                        <div style="font-size: 0.75rem; color: #888;">Keterkaitan Hulu</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                with col_l2:
-                    st.metric("Forward Linkage", f"{linkages['forward_linkage']:.4f}")
-                    st.markdown(f"*Direct Sales Coefficient:* {linkages['direct_sales_coefficient']:.4f}")
+                with link_col2:
+                    bg_color = '#FFF3E0' if linkages['forward_linkage'] > 2.5 else '#E3F2FD'
+                    st.markdown(f"""
+                    <div class="metric-premium" style="background: linear-gradient(135deg, {bg_color} 0%, #ffffff 100%);">
+                        <div style="font-size: 0.8rem; color: #555;">➡️ Forward Linkage</div>
+                        <div style="font-size: 2rem; font-weight: 800; color: #F57C00;">{linkages['forward_linkage']:.4f}</div>
+                        <div style="font-size: 0.75rem; color: #888;">Keterkaitan Hilir</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                st.success(f"**Interpretasi:** {linkages['interpretation']}")
+                with link_col3:
+                    st.markdown(f"""
+                    <div class="metric-premium">
+                        <div style="font-size: 0.8rem; color: #555;">📥 Direct Input Coef.</div>
+                        <div style="font-size: 1.8rem; font-weight: 800; color: #764ba2;">{linkages['direct_input_coefficient']:.4f}</div>
+                        <div style="font-size: 0.75rem; color: #888;">Input langsung dari sektor lain</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                # Radar chart for linkages
-                fig_radar = go.Figure()
+                with link_col4:
+                    st.markdown(f"""
+                    <div class="metric-premium">
+                        <div style="font-size: 0.8rem; color: #555;">📤 Direct Sales Coef.</div>
+                        <div style="font-size: 1.8rem; font-weight: 800; color: #667eea;">{linkages['direct_sales_coefficient']:.4f}</div>
+                        <div style="font-size: 0.75rem; color: #888;">Penjualan langsung ke sektor lain</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                fig_radar.add_trace(go.Scatterpolar(
-                    r=[linkages['backward_linkage'], linkages['forward_linkage'], 
-                       linkages['direct_input_coefficient'], linkages['direct_sales_coefficient']],
-                    theta=['Backward Linkage', 'Forward Linkage', 
-                           'Direct Input', 'Direct Sales'],
-                    fill='toself',
-                    name=linkage_sector
-                ))
+                # Interpretation Box
+                st.markdown(f"""
+                <div class="{'highlight-box' if 'Key' in linkages['interpretation'] else 'info-box'}">
+                    <h4>💡 Interpretasi Ekonomis:</h4>
+                    <p style="font-size: 1.1rem;"><strong>{linkages['interpretation']}</strong></p>
+                </div>
+                """, unsafe_allow_html=True)
                 
-                fig_radar.update_layout(
-                    polar=dict(radialaxis=dict(visible=True)),
-                    showlegend=False,
-                    title=f"Radar Chart Linkages: {linkage_sector}"
-                )
+                # Visualization Row
+                viz_col1, viz_col2 = st.columns([1, 1])
                 
-                st.plotly_chart(fig_radar, use_container_width=True)
+                with viz_col1:
+                    # Radar Chart
+                    fig_radar = go.Figure(data=go.Scatterpolar(
+                        r=[
+                            linkages['backward_linkage'],
+                            linkages['forward_linkage'],
+                            linkages['direct_input_coefficient'] * 10,  # Scale for visibility
+                            linkages['direct_sales_coefficient'] * 10
+                        ],
+                        theta=['Backward Linkage<br>(Hulu)', 'Forward Linkage<br>(Hilir)', 
+                               'Direct Input<br>(×10)', 'Direct Sales<br>(×10)'],
+                        fill='toself',
+                        line_color='#667eea',
+                        fillcolor='rgba(102, 126, 234, 0.3)',
+                        name=linkage_sector
+                    ))
+                    
+                    fig_radar.update_layout(
+                        height=500,
+                        title=f"🕸️ Radar Profile: {linkage_sector}",
+                        title_font_size=16,
+                        polar=dict(
+                            radialaxis=dict(
+                                visible=True,
+                                gridcolor='rgba(0,0,0,0.2)',
+                                linecolor='rgba(0,0,0,0.3)'
+                            ),
+                            angularaxis=dict(
+                                gridcolor='rgba(0,0,0,0.2)',
+                                bgcolor='rgba(240,240,240,0.3)'
+                            )
+                        ),
+                        paper_bgcolor='white',
+                        showlegend=False,
+                        margin=dict(l=50, r=50, t=80, b=50)
+                    )
+                    
+                    st.plotly_chart(fig_radar, use_container_width=True)
                 
-                st.info("""
-                **Penjelasan Linkages:**
-                - **Backward Linkage**: Kekuatan keterkaitan dengan sektor hulu (pemasok)
-                - **Forward Linkage**: Kekuatan keterkaitan dengan sektor hilir (pembeli)
-                - Sektor dengan backward linkage tinggi mendorong pertumbuhan sektor pemasok
-                - Sektor dengan forward linkage tinggi memungkinkan aktivitas sektor downstream
-                """)
+                with viz_col2:
+                    # Comparison with Economy Average
+                    avg_backward = np.mean([io_analyzer.get_sector_linkages(s)['backward_linkage'] 
+                                           for s in io_analyzer.industry_names[:10]])  # Sample for speed
+                    avg_forward = np.mean([io_analyzer.get_sector_linkages(s)['forward_linkage'] 
+                                          for s in io_analyzer.industry_names[:10]])
+                    
+                    fig_compare = go.Figure(data=[
+                        go.Bar(
+                            name='Sektor Terpilih',
+                            x=['Backward Linkage', 'Forward Linkage'],
+                            y=[linkages['backward_linkage'], linkages['forward_linkage']],
+                            marker_color=['#667eea', '#764ba2'],
+                            text=[f'{linkages["backward_linkage"]:.2f}', f'{linkages["forward_linkage"]:.2f}'],
+                            textposition='outside'
+                        ),
+                        go.Bar(
+                            name='Rata-rata Ekonomi*',
+                            x=['Backward Linkage', 'Forward Linkage'],
+                            y=[avg_backward, avg_forward],
+                            marker_color=['#ffd700', '#c0c0c0'],
+                            text=[f'{avg_backward:.2f}', f'{avg_forward:.2f}'],
+                            textposition='outside'
+                        )
+                    ])
+                    
+                    fig_compare.update_layout(
+                        height=500,
+                        title="📊 Perbandingan dengan Rata-rata Ekonomi",
+                        title_font_size=16,
+                        barmode='group',
+                        yaxis_title="Nilai Linkage",
+                        showlegend=True,
+                        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+                        paper_bgcolor='white',
+                        plot_bgcolor='rgba(240,240,240,0.5)',
+                        yaxis=dict(showgrid=True, gridcolor='rgba(0,0,0,0.1)')
+                    )
+                    
+                    st.plotly_chart(fig_compare, use_container_width=True)
+                    st.caption("*Rata-rata dihitung dari 10 sektor pertama sebagai sampel")
+                
+                # Educational Content
+                st.markdown("""
+                <div class="info-box">
+                    <h4>🎓 Memahami Linkages Analysis</h4>
+                    <table style="width: 100%;">
+                        <tr>
+                            <td style="padding: 1rem; vertical-align: top;">
+                                <strong>⬅️ Backward Linkage</strong><br>
+                                Mengukur seberapa besar sektor ini bergantung pada input dari sektor lain.<br>
+                                <em>Tinggi</em> = Mendorong pertumbuhan sektor pemasok (hulu)
+                            </td>
+                            <td style="padding: 1rem; vertical-align: top;">
+                                <strong>➡️ Forward Linkage</strong><br>
+                                Mengukur seberapa besar sektor lain bergantung pada output sektor ini.<br>
+                                <em>Tinggi</em> = Memungkinkan aktivitas sektor downstream (hilir)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="padding: 1rem; border-top: 1px solid rgba(0,0,0,0.1);">
+                                <strong>Klasifikasi Sektor:</strong><br>
+                                • <strong>Key Sector:</strong> Backward & Forward tinggi → Prioritas utama<br>
+                                • <strong>Base Industry:</strong> Backward tinggi → Fokus pada pengembangan hulu<br>
+                                • <strong>Strategic Sector:</strong> Forward tinggi → Enabler sektor downstream<br>
+                                • <strong>Standard Sector:</strong> Linkages moderat → Peran normal dalam ekonomi
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                """, unsafe_allow_html=True)
+    
     else:
-        st.error("Gagal memuat Tabel Input-Output. Pastikan file excel tersedia.")
+        # Error State dengan Enhanced UI
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); 
+                     padding: 3rem; border-radius: 20px; color: white; text-align: center;">
+            <h2 style="font-size: 2rem; margin-bottom: 1rem;">❌ Gagal Memuat Tabel Input-Output</h2>
+            <p style="font-size: 1.1rem; margin-bottom: 2rem;">
+                File Excel 'indonesia-tables-as-of-june-2023.xlsx' tidak ditemukan atau tidak dapat dibaca.
+            </p>
+            <div style="background: rgba(255,255,255,0.2); padding: 1.5rem; border-radius: 10px;">
+                <strong>Solusi:</strong><br>
+                1. Pastikan file Excel tersedia di direktori aplikasi<br>
+                2. Periksa format file sesuai standar BPS<br>
+                3. Restart aplikasi setelah file ditambahkan
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 with tab4:
     st.header("🗺️ Perbandingan Antar Provinsi")
