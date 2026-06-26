@@ -804,7 +804,7 @@ with tab5:
 
             styled_df = multipliers_df[['Rank', 'Sector', 'Output Multiplier', 'Category']].style\
                 .format({'Output Multiplier': '{:.4f}x'})\
-                .apply(lambda x: [color_multiplier(val) if name == 'Output Multiplier' else '' for name, val in zip(x.index, x)], axis=0)\
+                .map(lambda val: color_multiplier(val) if isinstance(val, (int, float)) else '', subset=['Output Multiplier'])\
                 .hide(axis='index')
             st.dataframe(styled_df, use_container_width=True, height=600)
 
