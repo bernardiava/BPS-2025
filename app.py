@@ -780,10 +780,6 @@ def load_io_analyzer():
     
     st.info(f"📁 File ditemukan di: `{found_path}`")
     
-    # Diagnostic: Show Excel structure
-    with st.expander("🔍 Lihat Struktur File Excel", expanded=True):
-        diagnose_excel_structure(found_path)
-    
     # Try multiple approaches to load the IO table
     try:
         # Approach 1: Use the class as intended
