@@ -1,4 +1,4 @@
-add this to app.py """"
+"""
 Aplikasi Streamlit untuk Analisis Dampak Infrastruktur terhadap Ekonomi Regional
 Data sumber: Badan Pusat Statistik (BPS) Indonesia
 - Produk Domestik Regional Bruto Provinsi-Provinsi di Indonesia Menurut Pengeluaran 2021-2025
@@ -972,4 +972,4 @@ st.markdown("""
     Publikasi: Produk Domestik Regional Bruto Provinsi-Provinsi di Indonesia Menurut Pengeluaran 2021-2025<br>
     <i>Dikembangkan dengan metodologi Regional Economic Impact Analysis & Policy Advisory System</i>
 </div>
-""", unsafe_allow_html=True)"
+""", unsafe_allow_html=True)
