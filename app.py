@@ -531,8 +531,8 @@ def generate_policy_recommendations(impact_data, province_name):
 
     # --- 3. DAMPAK INFRASTRUKTUR - DETAILED ---
     impact_narrative = []
-    impact_narrative.append(f"**Estimasi Investasi Infrastruktur:** Rp {infra_invest:,.0f} Juta (40% dari PMTB)")
-    impact_narrative.append(f"**Total Dampak Ekonomi (Multiplier {multiplier:.1f}x):** Rp {total_impact:,.0f} Juta")
+    impact_narrative.append(f"**Estimasi Investasi Infrastruktur:** Rp {infra_invest:,.2f} Juta (40% dari PMTB)")
+    impact_narrative.append(f"**Total Dampak Ekonomi (Multiplier {multiplier:.1f}x):** Rp {total_impact:,.2f} Juta")
     impact_narrative.append(f"**Kontribusi terhadap PDRB:** {contribution_pct:.2f}% → {'Sangat Signifikan!' if contribution_pct > 20 else 'Signifikan' if contribution_pct > 10 else 'Moderat'}")
     impact_narrative.append(f"**Artinya:** Setiap Rp 1 triliun investasi infrastruktur menghasilkan Rp {multiplier:.2f} triliun dampak ekonomi total bagi {province_name}.")
 
@@ -909,7 +909,7 @@ if show_io_analysis and io_loaded:
     
     with io_summary_col2:
         st.subheader("📊 Statistik IO Table")
-        st.metric("Total Output Nasional", f"${io_analyzer.data['total_output_sum']:,.0f} Juta USD")
+        st.metric("Total Output Nasional", f"${io_analyzer.data['total_output_sum']:,.2f} Juta USD")
         st.metric("Jumlah Sektor", len(io_analyzer.industry_names))
         
         # Linkage analysis untuk Construction
@@ -952,29 +952,29 @@ with tab1:
         with col1:
             st.metric(
                 label="Investasi Infrastruktur",
-                value=f"Rp {latest_data['infrastructure_investment']:,.0f} M",
-                delta=f"{latest_data['investment_ratio']:.1f}% dari PDRB"
+                value=f"Rp {latest_data['infrastructure_investment']:,.2f} M",
+                delta=f"{latest_data['investment_ratio']:.2f}% dari PDRB"
             )
         
         with col2:
             st.metric(
                 label="Total Dampak Ekonomi",
-                value=f"Rp {latest_data['total_impact']:,.0f} M",
+                value=f"Rp {latest_data['total_impact']:,.2f} M",
                 delta=f"Multiplier: {latest_data['multiplier']:.2f}x"
             )
         
         with col3:
             st.metric(
                 label="Dampak Tidak Langsung",
-                value=f"Rp {latest_data['indirect_impact']:,.0f} M",
-                delta=f"+{latest_data['indirect_impact']/latest_data['direct_impact']*100:.1f}% dari dampak langsung"
+                value=f"Rp {latest_data['indirect_impact']:,.2f} M",
+                delta=f"+{latest_data['indirect_impact']/latest_data['direct_impact']*100:.2f}% dari dampak langsung"
             )
         
         with col4:
             st.metric(
                 label="Kontribusi ke PDRB",
                 value=f"{latest_data['contribution_ratio']:.2f}%",
-                delta=f"Total PDRB: Rp {latest_data['grdp_total']:,.0f} M"
+                delta=f"Total PDRB: Rp {latest_data['grdp_total']:,.2f} M"
             )
     
     # Visualisasi
@@ -1076,7 +1076,7 @@ with tab2:
             x=["Investasi Langsung"],
             y=[latest_data['infrastructure_investment']],
             marker_color="#3b82f6",
-            text=[f"Rp {latest_data['infrastructure_investment']:,.0f} M"],
+            text=[f"Rp {latest_data['infrastructure_investment']:,.2f} M"],
             textposition='outside',
             name='Investasi Langsung'
         ))
@@ -1086,7 +1086,7 @@ with tab2:
             x=["Efek Pengganda"],
             y=[latest_data['indirect_impact']],
             marker_color="#22c55e",
-            text=[f"+ Rp {latest_data['indirect_impact']:,.0f} M"],
+            text=[f"+ Rp {latest_data['indirect_impact']:,.2f} M"],
             textposition='outside',
             name='Efek Pengganda'
         ))
@@ -1097,7 +1097,7 @@ with tab2:
             y=[latest_data['total_impact']],
             mode='markers+text',
             marker=dict(size=20, color="#1f2937"),
-            text=[f"= Rp {latest_data['total_impact']:,.0f} M"],
+            text=[f"= Rp {latest_data['total_impact']:,.2f} M"],
             textposition='top center',
             name='Total Dampak',
             showlegend=False
@@ -1504,7 +1504,7 @@ with tab5:
                 st.markdown(f"""
                 <div class="sector-card" style="text-align: center;">
                     <div style="font-size: 0.9rem; color: #666;">Investasi yang Disimulasikan</div>
-                    <div style="font-size: 1.8rem; font-weight: 800; color: #764ba2;">${investment_amount:,.0f} Juta USD</div>
+                    <div style="font-size: 1.8rem; font-weight: 800; color: #764ba2;">${investment_amount:,.2f} Juta USD</div>
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -1526,7 +1526,7 @@ with tab5:
                     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                                  padding: 2rem; border-radius: 15px; color: white; margin: 2rem 0;">
                         <h3 style="margin: 0; font-size: 1.5rem;">📊 Hasil Simulasi: {selected_io_sector}</h3>
-                        <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Investasi: ${investment_amount:,.0f} Juta USD</p>
+                        <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Investasi: ${investment_amount:,.2f} Juta USD</p>
                     </div>
                     """, unsafe_allow_html=True)
                     
@@ -1537,7 +1537,7 @@ with tab5:
                         st.markdown(f"""
                         <div class="metric-premium" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
                             <div style="font-size: 0.85rem; color: #555;">📥 Dampak Langsung</div>
-                            <div style="font-size: 1.8rem; font-weight: 800; color: #2c3e50;">${impact['direct_impact']:,.0f}M</div>
+                            <div style="font-size: 1.8rem; font-weight: 800; color: #2c3e50;">${impact['direct_impact']:,.2f}M</div>
                         </div>
                         """, unsafe_allow_html=True)
                     
@@ -1545,7 +1545,7 @@ with tab5:
                         st.markdown(f"""
                         <div class="metric-premium" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);">
                             <div style="font-size: 0.85rem; color: #555;">🔄 Dampak Tidak Langsung</div>
-                            <div style="font-size: 1.8rem; font-weight: 800; color: #2c3e50;">${impact['indirect_impact']:,.0f}M</div>
+                            <div style="font-size: 1.8rem; font-weight: 800; color: #2c3e50;">${impact['indirect_impact']:,.2f}M</div>
                         </div>
                         """, unsafe_allow_html=True)
                     
@@ -1553,7 +1553,7 @@ with tab5:
                         st.markdown(f"""
                         <div class="metric-premium" style="background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);">
                             <div style="font-size: 0.85rem; color: #555;">📤 Total Dampak Ekonomi</div>
-                            <div style="font-size: 1.8rem; font-weight: 800; color: #2c3e50;">${impact['total_impact']:,.0f}M</div>
+                            <div style="font-size: 1.8rem; font-weight: 800; color: #2c3e50;">${impact['total_impact']:,.2f}M</div>
                         </div>
                         """, unsafe_allow_html=True)
                     
@@ -1579,7 +1579,7 @@ with tab5:
                                 hole=0.4,
                                 marker_colors=['#667eea', '#764ba2'],
                                 textinfo='label+percent',
-                                hovertemplate='%{label}: $%{value:,.0f} Juta (%{percent})<extra></extra>'
+                                hovertemplate='%{label}: $%{value:,.2f} Juta (%{percent})<extra></extra>'
                             )
                         ])
                         
