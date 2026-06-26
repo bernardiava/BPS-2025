@@ -609,9 +609,9 @@ if not impact_results:
 policy_rec = generate_policy_recommendations(impact_results, selected_province)
 latest_data = impact_results.get(selected_year, impact_results[max(impact_results.keys())])
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 Dashboard Dampak", "🧠 Interpretasi & Kebijakan",
-    "📋 Breakdown Data", "🗺️ Komparasi Nasional"
+    "📋 Breakdown Data", "🗺️ Komparasi Nasional", "🏛️ Input-Output Analysis"
 ])
 
 with tab1:
@@ -723,10 +723,6 @@ with tab3:
             fig_bar.update_layout(height=400)
             st.plotly_chart(fig_bar, use_container_width=True)
 
-# Input-Output Analysis tab (5th tab, created separately to avoid Python scoping issues)
-tab5 = st.tabs(["📊 Dashboard Dampak", "🧠 Interpretasi & Kebijakan", "📋 Breakdown Data",
-                 "🗺️ Komparasi Nasional", "🏛️ Input-Output Analysis"])[4]
-
 with tab5:
     st.markdown("""
     <style>
@@ -807,7 +803,9 @@ with tab5:
                 else: return 'background-color: #E3F2FD; color: #1565C0'
 
             styled_df = multipliers_df[['Rank', 'Sector', 'Output Multiplier', 'Category']].style\
-                .format({'Output Multiplier': '{:.4f}x'}).applymap(color_multiplier, subset=['Output Multiplier']).hide(axis='index')
+                .format({'Output Multiplier': '{:.4f}x'})\
+                .apply(lambda x: [color_multiplier(val) if name == 'Output Multiplier' else '' for name, val in zip(x.index, x)], axis=0)\
+                .hide(axis='index')
             st.dataframe(styled_df, use_container_width=True, height=600)
 
         with io_tab2:
