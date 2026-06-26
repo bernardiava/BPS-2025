@@ -803,7 +803,9 @@ with tab5:
                 else: return 'background-color: #E3F2FD; color: #1565C0'
 
             styled_df = multipliers_df[['Rank', 'Sector', 'Output Multiplier', 'Category']].style\
-                .format({'Output Multiplier': '{:.4f}x'}).map(color_multiplier, subset=['Output Multiplier']).hide(axis='index')
+                .format({'Output Multiplier': '{:.4f}x'})\
+                .apply(lambda x: [color_multiplier(val) if name == 'Output Multiplier' else '' for name, val in zip(x.index, x)], axis=0)\
+                .hide(axis='index')
             st.dataframe(styled_df, use_container_width=True, height=600)
 
         with io_tab2:
