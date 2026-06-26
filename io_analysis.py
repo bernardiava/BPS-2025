@@ -71,23 +71,22 @@ class InputOutputAnalyzer:
             self.industry_names = [str(x) for x in row_4.tolist() if pd.notna(x) and str(x).strip()]
             
             # Determine actual data dimensions dynamically
-            n_sectors = len(self.industry_names)
+            # The IO table has 35 industry sectors (columns 2-36), followed by final demand columns
+            n_sectors = 35
             
             # Get intermediate transaction matrix (rows 6 to 6+n_sectors-1, cols 2 to 2+n_sectors-1)
             self.intermediate_transactions = df.iloc[6:6+n_sectors, 2:2+n_sectors].values.astype(float)
             
-            # Get total output from the last row labeled "TOTAL"
-            total_row_idx = None
-            for idx in range(len(df)-1, -1, -1):
-                if str(df.iloc[idx, 0]).upper() == 'TOTAL':
-                    total_row_idx = idx
-                    break
+            # Calculate total output correctly as: intermediate_total + taxes + value_added
+            # This avoids the issue with the TOTAL row including imports which causes division issues
+            intermediate_total_row = df.iloc[42, 2:2+n_sectors].values.astype(float)
+            taxes_row = df.iloc[43, 2:2+n_sectors].values.astype(float)
+            value_added_row = df.iloc[47, 2:2+n_sectors].values.astype(float)
             
-            if total_row_idx is None:
-                # Fallback: use row 49 if TOTAL label not found
-                total_row_idx = 49
+            self.total_output = intermediate_total_row + taxes_row + value_added_row
             
-            self.total_output = df.iloc[total_row_idx, 2:2+n_sectors].values.astype(float)
+            # Extract only the 35 industry names (excluding final demand columns)
+            self.industry_names = [str(x) for x in df.iloc[4, 2:2+n_sectors].tolist() if pd.notna(x) and str(x).strip()]
             
             # Calculate technical coefficients
             self._calculate_technical_coefficients()
