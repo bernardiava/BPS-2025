@@ -1,337 +1,406 @@
-"""
-Dashboard Analisis Dampak Ekonomi Input-Output (Dash Platform)
-Alternative to Streamlit for professional economic analysis.
-"""
-
 import dash
-from dash import dcc, html, dash_table, Input, Output, State
+from dash import dcc, html, Input, Output, callback
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
-import json
-import io
-import base64
-from datetime import datetime
+import os
+import sys
 
-# Import fungsi analisis dari modul lokal (pastikan io_analysis.py ada di folder yang sama)
+# Tambahkan path ke src agar bisa import io_analysis
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+
 try:
-    from io_analysis import load_io_data, calculate_multipliers, classify_sectors
+    from io_analysis import load_io_data, calculate_multipliers, calculate_linkages
 except ImportError:
-    # Fallback jika modul belum tersedia atau struktur berbeda
+    # Fallback jika struktur folder berbeda
+    print("Warning: Could not import io_analysis module. Using mock data for demonstration.")
+    
+    # Mock data untuk testing di Render
     def load_io_data():
-        # Dummy loader untuk contoh struktur
         return None
     
-    def calculate_multipliers(data):
-        return None
+    def calculate_multipliers(io_table):
+        sectors = [f"Sektor {i}" for i in range(1, 36)]
+        multipliers = np.random.uniform(1.5, 2.5, 35)
+        return pd.DataFrame({
+            'Sector': sectors,
+            'Output Multiplier': multipliers
+        })
+    
+    def calculate_linkages(io_table):
+        sectors = [f"Sektor {i}" for i in range(1, 36)]
+        backward = np.random.uniform(0.8, 2.2, 35)
+        forward = np.random.uniform(0.8, 2.2, 35)
+        return pd.DataFrame({
+            'Sector': sectors,
+            'Backward Linkage': backward,
+            'Forward Linkage': forward
+        })
 
-    def classify_sectors(multipliers):
-        return None
-
-# --- Konfigurasi Awal & Load Data ---
-# Asumsi: Data IO sudah diproses dan disimpan dalam format yang bisa dibaca
-# Untuk demo ini, kita akan membuat data dummy yang merepresentasikan hasil analisis sebelumnya
-# Dalam produksi, ganti bagian ini dengan pemanggilan fungsi asli dari io_analysis.py
-
+# ==========================================
+# LOAD DATA
+# ==========================================
 def get_analysis_data():
-    """
-    Mengambil data hasil analisis IO.
-    Ganti ini dengan logic pembacaan file Excel/JSON asli Anda.
-    """
-    # Data Dummy berdasarkan hasil analisis sebelumnya (Top Sectors)
-    sectors = [
-        "Electricity, gas, and water supply", "Construction", "Water transport",
-        "Pulp, paper, paper products", "Food, beverages, and tobacco",
-        "Machinery, nec", "Rubber and plastics", "Other nonmetallic minerals",
-        "Electrical and optical equipment", "Chemicals and chemical products",
-        "Agriculture, hunting, forestry", "Fishing", "Mining and quarrying",
-        "Textiles and textile products", "Leather, leather products",
-        "Wood and products of wood", "Coke, refined petroleum", "Basic metals",
-        "Fabricated metal products", "Motor vehicles", "Other transport equipment",
-        "Manufacturing nec", "Recycling", "Sale via mail order", "Retail trade",
-        "Hotels and restaurants", "Inland transport", "Air transport",
-        "Supporting transport activities", "Post and telecommunications",
-        "Financial intermediation", "Real estate activities", "Renting of machinery",
-        "Computer services", "Other business activities"
-    ]
-    
-    # Multiplier values (sesuai hasil analisis sebelumnya)
-    multipliers = [
-        2.356, 2.011, 1.975, 1.975, 1.940, 1.936, 1.934, 1.915, 1.911, 1.899,
-        1.850, 1.820, 1.750, 1.700, 1.650, 1.600, 1.550, 1.500, 1.450, 1.400,
-        1.350, 1.300, 1.250, 1.200, 1.150, 1.100, 1.050, 1.000, 0.950, 0.900,
-        0.850, 0.800, 0.750, 0.700, 0.650
-    ]
-    
-    # Generate Backward/Forward Linkages (Dummy correlation for demo)
-    backward = [m * np.random.uniform(0.9, 1.1) for m in multipliers]
-    forward = [m * np.random.uniform(0.8, 1.2) for m in multipliers]
-    
-    # Classification Logic (Simplified)
-    categories = []
-    for b, f in zip(backward, forward):
-        if b > 1.0 and f > 1.0:
-            cat = "Key Sector (Prioritas Utama)"
-        elif b > 1.0:
-            cat = "Base Industry (Hulu)"
-        elif f > 1.0:
-            cat = "Strategic Sector (Hilir)"
+    """Load data IO dan hitung multiplier & linkages"""
+    try:
+        # Coba load dari file Excel jika ada
+        io_path = os.path.join(os.path.dirname(__file__), 'indonesia-tables-as-of-june-2023.xlsx')
+        if os.path.exists(io_path):
+            io_table = pd.read_excel(io_path, sheet_name='2022', skiprows=9)
+            multipliers_df = calculate_multipliers(io_table)
+            linkages_df = calculate_linkages(io_table)
+            return multipliers_df, linkages_df
         else:
-            cat = "Standard Sector"
-        categories.append(cat)
-
-    df = pd.DataFrame({
-        'Sector': sectors,
-        'Output Multiplier': multipliers,
-        'Backward Linkage': backward,
-        'Forward Linkage': forward,
-        'Category': categories
-    })
-    
-    # Sort by multiplier
-    df = df.sort_values(by='Output Multiplier', ascending=False).reset_index(drop=True)
-    df['Rank'] = df.index + 1
-    
-    return df
-
-# Load data global
-df_analysis = get_analysis_data()
-
-# --- Inisialisasi Aplikasi Dash ---
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
-app.title = "Dashboard Dampak Ekonomi Indonesia"
-
-server = app.server  # Untuk deployment Gunicorn/Heroku
-
-# --- Layout Komponen ---
-
-header = html.Div([
-    html.H1("🏛️ Dashboard Dampak Ekonomi Input-Output", 
-            style={'textAlign': 'center', 'color': '#2c3e50', 'fontFamily': 'Arial'}),
-    html.P("Analisis struktural ekonomi Indonesia untuk perencanaan pembangunan infrastruktur dan kebijakan sektoral.",
-           style={'textAlign': 'center', 'color': '#7f8c8d', 'fontSize': '18px'}),
-    html.Hr(style={'borderColor': '#bdc3c7', 'margin': '20px 0'})
-])
-
-controls = html.Div([
-    html.Div([
-        html.Label("Pilih Sektor untuk Simulasi:", style={'fontWeight': 'bold'}),
-        dcc.Dropdown(
-            id='sector-dropdown',
-            options=[{'label': f"{row['Rank']}. {row['Sector']}", 'value': row['Sector']} 
-                     for _, row in df_analysis.iterrows()],
-            value=df_analysis.iloc[0]['Sector'],
-            clearable=False,
-            style={'width': '100%'}
-        )
-    ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top'}),
-    
-    html.Div([
-        html.Label("Besaran Investasi Awal (Rp Miliar):", style={'fontWeight': 'bold'}),
-        dcc.Input(
-            id='investment-input',
-            type='number',
-            value=100,
-            min=0,
-            step=10,
-            style={'width': '100%', 'padding': '10px', 'fontSize': '16px', 'border': '1px solid #ccc', 'borderRadius': '5px'}
-        )
-    ], style={'width': '48%', 'display': 'inline-block', 'marginLeft': '4%', 'verticalAlign': 'top'})
-], style={'backgroundColor': '#f8f9fa', 'padding': '20px', 'borderRadius': '10px', 'marginBottom': '20px'})
-
-tabs = html.Div([
-    dcc.Tabs(id='main-tabs', value='tab-dashboard', children=[
-        dcc.Tab(label='📊 Dashboard Multiplier', value='tab-dashboard', style={'fontSize': '16px'}),
-        dcc.Tab(label='🔗 Analisis Linkages', value='tab-linkages', style={'fontSize': '16px'}),
-        dcc.Tab(label='🧮 Simulator Kebijakan', value='tab-simulator', style={'fontSize': '16px'}),
-        dcc.Tab(label='📄 Tabel Data Lengkap', value='tab-table', style={'fontSize': '16px'}),
-    ], style={'fontSize': '16px', 'fontWeight': 'bold'}),
-    
-    html.Div(id='tabs-content', style={'marginTop': '20px'})
-])
-
-footer = html.Footer([
-    html.Hr(),
-    html.P("© 2025 Badan Pusat Statistik (BPS) - Analisis Ekonomi Regional. Dibuat dengan Dash & Plotly.",
-           style={'textAlign': 'center', 'fontSize': '14px', 'color': '#95a5a6'})
-])
-
-app.layout = html.Div([
-    header,
-    controls,
-    tabs,
-    footer
-], style={'maxWidth': '1200px', 'margin': '0 auto', 'padding': '20px', 'fontFamily': 'Segoe UI, Arial, sans-serif'})
-
-# --- Callbacks ---
-
-@app.callback(
-    Output('tabs-content', 'children'),
-    Input('main-tabs', 'value')
-)
-def render_content(tab):
-    if tab == 'tab-dashboard':
-        return create_dashboard_tab()
-    elif tab == 'tab-linkages':
-        return create_linkages_tab()
-    elif tab == 'tab-simulator':
-        return create_simulator_tab()
-    elif tab == 'tab-table':
-        return create_table_tab()
-    return html.Div("Tab tidak ditemukan")
-
-def create_dashboard_tab():
-    fig_bar = px.bar(
-        df_analysis.head(15),
-        x='Output Multiplier',
-        y='Sector',
-        orientation='h',
-        title='Top 15 Sektor dengan Output Multiplier Tertinggi',
-        labels={'Output Multiplier': 'Nilai Multiplier', 'Sector': 'Nama Sektor'},
-        color='Output Multiplier',
-        color_continuous_scale='Viridis'
-    )
-    fig_bar.update_layout(height=600, yaxis={'categoryorder': 'total ascending'})
-    
-    return html.Div([
-        html.H3("Dampak Ekonomi per Sektor"),
-        html.P("Grafik ini menunjukkan seberapa besar dampak berantai dari setiap Rp 1,00 investasi pada sektor tertentu terhadap total output ekonomi nasional."),
-        dcc.Graph(figure=fig_bar, config={'displayModeBar': False})
-    ])
-
-def create_linkages_tab():
-    fig_scatter = px.scatter(
-        df_analysis,
-        x='Backward Linkage',
-        y='Forward Linkage',
-        size='Output Multiplier',
-        color='Category',
-        hover_name='Sector',
-        title='Peta Sebaran Sektor (Backward vs Forward Linkages)',
-        labels={'Backward Linkage': 'Kekuatan Tarikan Hulu (Backward)', 
-                'Forward Linkage': 'Kekuatan Dorongan Hilir (Forward)'},
-        color_discrete_map={
-            "Key Sector (Prioritas Utama)": "#e74c3c",
-            "Base Industry (Hulu)": "#3498db",
-            "Strategic Sector (Hilir)": "#2ecc71",
-            "Standard Sector": "#95a5a6"
-        }
-    )
-    
-    # Garis batas threshold 1.0
-    fig_scatter.add_shape(type="line", x0=1, y0=0, x1=1, y1=max(df_analysis['Forward Linkage']), line=dict(color="Black", dash="dash"))
-    fig_scatter.add_shape(type="line", x0=0, y0=1, x1=max(df_analysis['Backward Linkage']), y1=1, line=dict(color="Black", dash="dash"))
-    
-    fig_scatter.update_layout(
-        height=600,
-        shapes=[
-            dict(type="line", x0=1, y0=0, x1=1, y1=3, line=dict(color="black", dash="dash")),
-            dict(type="line", x0=0, y0=1, x1=3, y1=1, line=dict(color="black", dash="dash"))
-        ],
-        annotations=[
-            dict(x=2.5, y=2.5, text="KEY SECTOR<br>(Prioritas Investasi)", showarrow=False, bgcolor="white"),
-            dict(x=0.5, y=2.5, text="STRATEGIC<br>(Hilir)", showarrow=False, bgcolor="white"),
-            dict(x=2.5, y=0.5, text="BASE INDUSTRY<br>(Hulu)", showarrow=False, bgcolor="white"),
-            dict(x=0.5, y=0.5, text="STANDARD", showarrow=False, bgcolor="white")
+            raise FileNotFoundError
+    except Exception as e:
+        print(f"Using mock data due to: {e}")
+        # Return mock data
+        sectors = [
+            "Agriculture, hunting, forestry, and fishing",
+            "Mining and quarrying",
+            "Food, beverages, and tobacco",
+            "Textiles and textile products",
+            "Leather, leather goods, and footwear",
+            "Wood and products of wood and cork",
+            "Pulp, paper, paper products, printing, and publishing",
+            "Coke, refined petroleum, and nuclear fuel",
+            "Chemicals and chemical products",
+            "Rubber and plastics",
+            "Other nonmetallic minerals",
+            "Basic metals and fabricated metal",
+            "Machinery, nec",
+            "Electrical and optical equipment",
+            "Transport equipment",
+            "Manufacturing, nec; recycling",
+            "Electricity, gas, and water supply",
+            "Construction",
+            "Sale, maintenance, and repair of motor vehicles...",
+            "Wholesale trade and commission trade...",
+            "Retail trade, except of motor vehicles...",
+            "Hotels and restaurants",
+            "Inland transport",
+            "Water transport",
+            "Air transport",
+            "Other supporting and auxiliary transport activities...",
+            "Post and telecommunications",
+            "Financial intermediation, except insurance...",
+            "Insurance and pension funding, except compulsory...",
+            "Activities auxiliary to financial intermediation",
+            "Real estate activities",
+            "Renting of machinery and equipment...",
+            "Computer and related activities",
+            "Research and development",
+            "Other business activities"
         ]
-    )
+        
+        # Mock multipliers (mirip hasil analisis sebelumnya)
+        mock_mult = [
+            1.75, 1.45, 1.94, 1.68, 1.52, 1.71, 1.97, 1.65, 1.90, 1.93,
+            1.91, 1.85, 1.94, 1.91, 1.78, 1.62, 2.36, 2.01, 1.67, 1.72,
+            1.69, 1.58, 1.82, 1.98, 1.73, 1.64, 1.76, 1.81, 1.55, 1.63,
+            1.48, 1.59, 1.71, 1.66, 1.74
+        ]
+        
+        # Mock linkages
+        mock_backward = np.random.uniform(0.9, 2.1, 35)
+        mock_forward = np.random.uniform(0.9, 2.1, 35)
+        
+        multipliers_df = pd.DataFrame({
+            'Sector': sectors,
+            'Output Multiplier': mock_mult
+        })
+        
+        linkages_df = pd.DataFrame({
+            'Sector': sectors,
+            'Backward Linkage': mock_backward,
+            'Forward Linkage': mock_forward
+        })
+        
+        # Add ranking
+        multipliers_df['Rank'] = multipliers_df['Output Multiplier'].rank(ascending=False).astype(int)
+        multipliers_df = multipliers_df.sort_values('Rank')
+        
+        # Categorize linkages
+        avg_backward = linkages_df['Backward Linkage'].mean()
+        avg_forward = linkages_df['Forward Linkage'].mean()
+        
+        def categorize(row):
+            if row['Backward Linkage'] > avg_backward and row['Forward Linkage'] > avg_forward:
+                return '🔑 Key Sector'
+            elif row['Backward Linkage'] > avg_backward:
+                return '🏭 Base Industry'
+            elif row['Forward Linkage'] > avg_forward:
+                return '📦 Strategic Sector'
+            else:
+                return '📊 Standard Sector'
+        
+        linkages_df['Category'] = linkages_df.apply(categorize, axis=1)
+        
+        return multipliers_df, linkages_df
+
+# Load data saat startup
+multipliers_df, linkages_df = get_analysis_data()
+
+# ==========================================
+# DASH APP INITIALIZATION
+# ==========================================
+app = dash.Dash(__name__, suppress_callback_exceptions=True)
+server = app.server  # Penting untuk Gunicorn/Render
+
+# ==========================================
+# LAYOUT
+# ==========================================
+app.layout = html.Div([
+    # Header
+    html.Header([
+        html.H1("🏛️ Dashboard Analisis Input-Output Indonesia", 
+                style={'textAlign': 'center', 'color': '#2c3e50', 'marginBottom': '10px'}),
+        html.P("Visualisasi dampak ekonomi infrastruktur dan sektor strategis lainnya",
+               style={'textAlign': 'center', 'color': '#7f8c8d', 'fontSize': '18px'})
+    ], style={'backgroundColor': '#ecf0f1', 'padding': '30px', 'borderBottom': '4px solid #3498db'}),
     
-    return html.Div([
-        html.H3("Analisis Keterkaitan Antar Sektor"),
-        html.P([
-            "Grafik ini membagi sektor menjadi 4 kuadran berdasarkan kekuatan tarikan ke hulu (Backward) dan dorongan ke hilir (Forward).",
+    # Container utama
+    html.Div([
+        # Tab 1: Multiplier Dashboard
+        html.Div([
+            html.H2("📊 Top Sektor dengan Multiplier Tertinggi", 
+                    style={'color': '#2c3e50', 'borderBottom': '2px solid #3498db', 'paddingBottom': '10px'}),
+            dcc.Graph(
+                id='multiplier-chart',
+                figure=px.bar(
+                    multipliers_df.head(15).sort_values('Output Multiplier', ascending=True),
+                    x='Output Multiplier',
+                    y='Sector',
+                    orientation='h',
+                    title='15 Sektor dengan Output Multiplier Tertinggi',
+                    labels={'Output Multiplier': 'Multiplier', 'Sector': 'Sektor'},
+                    color='Output Multiplier',
+                    color_continuous_scale='Viridis'
+                ).update_layout(
+                    height=600,
+                    xaxis_title='Nilai Multiplier',
+                    yaxis_title='',
+                    showlegend=False
+                )
+            )
+        ], style={'marginBottom': '40px'}),
+        
+        # Tab 2: Linkages Analysis
+        html.Div([
+            html.H2("🔗 Analisis Backward & Forward Linkages", 
+                    style={'color': '#2c3e50', 'borderBottom': '2px solid #3498db', 'paddingBottom': '10px'}),
+            html.P("""
+                **Cara Membaca:**
+                - 🔑 **Key Sector**: Backward > rata-rata DAN Forward > rata-rata (Prioritas utama!)
+                - 🏭 **Base Industry**: Backward > rata-rata (Banyak menyerap supplier lokal)
+                - 📦 **Strategic Sector**: Forward > rata-rata (Banyak mensupply sektor lain)
+                - 📊 **Standard Sector**: Di bawah rata-rata
+            """, style={'backgroundColor': '#f8f9fa', 'padding': '15px', 'borderRadius': '5px', 'marginBottom': '20px'}),
+            dcc.Graph(
+                id='linkages-scatter',
+                figure=px.scatter(
+                    linkages_df,
+                    x='Backward Linkage',
+                    y='Forward Linkage',
+                    color='Category',
+                    text='Sector',
+                    title='Peta Sebaran Sektor Berdasarkan Linkages',
+                    labels={'Backward Linkage': 'Backward Linkage (Daya Tarik Supplier)', 
+                            'Forward Linkage': 'Forward Linkage (Daya Dorong Hilir)'},
+                    color_discrete_map={
+                        '🔑 Key Sector': '#e74c3c',
+                        '🏭 Base Industry': '#3498db',
+                        '📦 Strategic Sector': '#2ecc71',
+                        '📊 Standard Sector': '#95a5a6'
+                    },
+                    size_max=15
+                ).update_layout(
+                    height=700,
+                    xaxis=dict(showgrid=True, zeroline=True, zerolinecolor='black'),
+                    yaxis=dict(showgrid=True, zeroline=True, zerolinecolor='black'),
+                    hovermode='closest'
+                ).add_shape(
+                    type='line',
+                    x0=linkages_df['Backward Linkage'].mean(),
+                    y0=0,
+                    x1=linkages_df['Backward Linkage'].mean(),
+                    y1=linkages_df['Forward Linkage'].max() * 1.1,
+                    line=dict(color='black', width=2, dash='dash')
+                ).add_shape(
+                    type='line',
+                    x0=0,
+                    y0=linkages_df['Forward Linkage'].mean(),
+                    x1=linkages_df['Backward Linkage'].max() * 1.1,
+                    y1=linkages_df['Forward Linkage'].mean(),
+                    line=dict(color='black', width=2, dash='dash')
+                ).add_annotation(
+                    x=linkages_df['Backward Linkage'].mean(),
+                    y=linkages_df['Forward Linkage'].max() * 1.05,
+                    text=f"Rata-rata Backward: {linkages_df['Backward Linkage'].mean():.2f}",
+                    showarrow=False,
+                    font=dict(size=12, color='black')
+                ).add_annotation(
+                    x=linkages_df['Backward Linkage'].max() * 1.05,
+                    y=linkages_df['Forward Linkage'].mean(),
+                    text=f"Rata-rata Forward: {linkages_df['Forward Linkage'].mean():.2f}",
+                    showarrow=False,
+                    font=dict(size=12, color='black'),
+                    textangle=90
+                )
+            )
+        ], style={'marginBottom': '40px'}),
+        
+        # Tab 3: Policy Simulator
+        html.Div([
+            html.H2("🧮 Simulator Dampak Investasi", 
+                    style={'color': '#2c3e50', 'borderBottom': '2px solid #3498db', 'paddingBottom': '10px'}),
+            html.Div([
+                html.Div([
+                    html.Label("Pilih Sektor:", style={'fontWeight': 'bold', 'fontSize': '16px'}),
+                    dcc.Dropdown(
+                        id='sector-dropdown',
+                        options=[{'label': f"{row['Sector']} ({row['Output Multiplier']:.2f}x)" 
+                                 for idx, row in multipliers_df.iterrows()],
+                        value=multipliers_df.iloc[0]['Sector'],
+                        style={'width': '100%', 'marginBottom': '20px'}
+                    ),
+                    html.Label("Nilai Investasi (Juta USD):", style={'fontWeight': 'bold', 'fontSize': '16px'}),
+                    dcc.Input(
+                        id='investment-input',
+                        type='number',
+                        value=100,
+                        min=0,
+                        step=10,
+                        style={'width': '100%', 'padding': '10px', 'fontSize': '16px', 'marginBottom': '20px'}
+                    ),
+                    html.Button("Hitung Dampak", id='calculate-btn', 
+                                style={'width': '100%', 'padding': '15px', 'fontSize': '18px', 
+                                       'backgroundColor': '#3498db', 'color': 'white', 'border': 'none', 
+                                       'borderRadius': '5px', 'cursor': 'pointer'})
+                ], style={'width': '45%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '20px'}),
+                
+                html.Div([
+                    html.Div(id='simulation-output', style={'backgroundColor': '#f8f9fa', 'padding': '20px', 
+                                                             'borderRadius': '5px', 'height': '100%'})
+                ], style={'width': '50%', 'display': 'inline-block', 'verticalAlign': 'top'})
+            ])
+        ], style={'marginBottom': '40px'}),
+        
+        # Tab 4: Data Table
+        html.Div([
+            html.H2("📋 Tabel Data Lengkap", 
+                    style={'color': '#2c3e50', 'borderBottom': '2px solid #3498db', 'paddingBottom': '10px'}),
+            html.Div([
+                html.Table([
+                    html.Thead([
+                        html.Tr([html.Th(col) for col in ['Rank', 'Sektor', 'Multiplier', 'Kategori']])
+                    ]),
+                    html.Tbody(id='data-table-body')
+                ], style={'width': '100%', 'borderCollapse': 'collapse', 'fontSize': '14px'})
+            ], style={'overflowX': 'auto'}),
             html.Br(),
-            html.B("Kuadran Kanan Atas (Key Sector): "), "Sektor prioritas utama karena memiliki dampak menyeluruh."
-        ]),
-        dcc.Graph(figure=fig_scatter, config={'displayModeBar': False})
-    ])
+            html.A("Download Data sebagai CSV", 
+                   href="/data/download-csv/",
+                   download="io_analysis_data.csv",
+                   style={'padding': '10px 20px', 'backgroundColor': '#27ae60', 'color': 'white', 
+                          'textDecoration': 'none', 'borderRadius': '5px', 'fontWeight': 'bold'})
+        ])
+        
+    ], style={'maxWidth': '1200px', 'margin': '0 auto', 'padding': '20px'}),
+    
+    # Footer
+    html.Footer([
+        html.Hr(),
+        html.P("© 2025 Dashboard Analisis Input-Output Indonesia | Data: BPS & OECD", 
+               style={'textAlign': 'center', 'color': '#7f8c8d'})
+    ], style={'padding': '20px', 'backgroundColor': '#ecf0f1', 'marginTop': '40px'})
+])
 
-def create_simulator_tab():
-    return html.Div([
-        html.H3("Simulator Dampak Investasi"),
-        html.P("Masukkan sektor dan jumlah investasi untuk melihat estimasi dampak langsung dan tidak langsung."),
-        html.Div(id='simulator-output', style={'marginTop': '20px', 'padding': '20px', 'backgroundColor': '#ecf0f1', 'borderRadius': '8px'})
-    ])
-
-@app.callback(
-    Output('simulator-output', 'children'),
-    Input('sector-dropdown', 'value'),
-    Input('investment-input', 'value')
+# ==========================================
+# CALLBACKS
+# ==========================================
+@callback(
+    Output('simulation-output', 'children'),
+    Input('calculate-btn', 'n_clicks'),
+    [Input('sector-dropdown', 'value'),
+     Input('investment-input', 'value')]
 )
-def update_simulator(sector, investment):
-    if sector is None or investment is None:
-        return ""
+def simulate_impact(n_clicks, sector, investment):
+    if n_clicks is None or sector is None or investment is None:
+        return html.P("Silakan pilih sektor dan masukkan nilai investasi, lalu klik 'Hitung Dampak'.")
     
-    row = df_analysis[df_analysis['Sector'] == sector].iloc[0]
-    multiplier = row['Output Multiplier']
+    # Cari multiplier sektor yang dipilih
+    sector_data = multipliers_df[multipliers_df['Sector'] == sector]
+    if sector_data.empty:
+        return html.P("Sektor tidak ditemukan.", style={'color': 'red'})
     
+    multiplier = sector_data['Output Multiplier'].values[0]
+    
+    # Hitung dampak
     direct_impact = investment
     indirect_impact = investment * (multiplier - 1)
     total_impact = investment * multiplier
     
-    # Format angka ke Rupiah sederhana
-    def fmt(val):
-        return f"Rp {val:,.0f} Miliar"
-    
+    # Buat visualisasi hasil
     return html.Div([
-        html.H4(f"Hasil Simulasi: {sector}"),
-        html.Table([
-            html.Tr([html.Td("Investasi Awal (Dampak Langsung):"), html.Td(fmt(direct_impact), style={'fontWeight': 'bold'})]),
-            html.Tr([html.Td("Dampak Tidak Langsung (Rantai Pasok):"), html.Td(fmt(indirect_impact), style={'color': '#2980b9'})]),
-            html.Tr([html.Td("Total Dampak Ekonomi:", style={'fontSize': '18px', 'fontWeight': 'bold'}), 
-                     html.Td(fmt(total_impact), style={'fontSize': '18px', 'fontWeight': 'bold', 'color': '#27ae60'})]),
-        ], style={'width': '100%', 'fontSize': '16px'}),
-        html.P(f"Dengan multiplier {multiplier:.3f}x, setiap Rp 1 Miliar investasi di sektor ini menghasilkan total output ekonomi sebesar Rp {multiplier:.3f} Miliar.", 
-               style={'marginTop': '15px', 'fontStyle': 'italic'})
-    ])
-
-def create_table_tab():
-    return html.Div([
-        html.H3("Tabel Data Lengkap Multiplier Sektor"),
-        dash_table.DataTable(
-            data=df_analysis.to_dict('records'),
-            columns=[
-                {"name": "Peringkat", "id": "Rank"},
-                {"name": "Sektor", "id": "Sector"},
-                {"name": "Output Multiplier", "id": "Output Multiplier", "type": "numeric", "format": {"specifier": ".3f"}},
-                {"name": "Backward Linkage", "id": "Backward Linkage", "type": "numeric", "format": {"specifier": ".3f"}},
-                {"name": "Forward Linkage", "id": "Forward Linkage", "type": "numeric", "format": {"specifier": ".3f"}},
-                {"name": "Kategori", "id": "Category"}
-            ],
-            sort_action="native",
-            filter_action="native",
-            page_size=10,
-            style_table={'overflowX': 'auto'},
-            style_header={'backgroundColor': '#34495e', 'color': 'white', 'fontWeight': 'bold'},
-            style_cell={'textAlign': 'left', 'padding': '10px'},
-            style_data_conditional=[
-                {
-                    'if': {'row_index': 'odd'},
-                    'backgroundColor': '#ecf0f1'
-                },
-                {
-                    'if': {'column_id': 'Output Multiplier'},
-                    'fontWeight': 'bold',
-                    'color': '#2980b9'
-                }
-            ]
-        ),
+        html.H3("Hasil Simulasi", style={'color': '#2c3e50', 'marginTop': '0'}),
+        html.P(f"**Sektor:** {sector}", style={'fontSize': '16px'}),
+        html.P(f"**Multiplier:** {multiplier:.4f}x", style={'fontSize': '18px', 'fontWeight': 'bold', 'color': '#3498db'}),
+        html.Hr(),
         html.Div([
-            html.Button("Unduh Data sebagai CSV", id="download-btn", n_clicks=0),
-            dcc.Download(id="download-dataframe-csv"),
-        ], style={'marginTop': '20px'})
+            html.Div([
+                html.P("Dampak Langsung:", style={'margin': '0', 'fontWeight': 'bold'}),
+                html.P(f"${direct_impact:,.0f} Juta", 
+                       style={'margin': '5px 0', 'fontSize': '20px', 'color': '#27ae60'})
+            ], style={'width': '48%', 'display': 'inline-block'}),
+            html.Div([
+                html.P("Dampak Tidak Langsung:", style={'margin': '0', 'fontWeight': 'bold'}),
+                html.P(f"${indirect_impact:,.0f} Juta", 
+                       style={'margin': '5px 0', 'fontSize': '20px', 'color': '#f39c12'})
+            ], style={'width': '48%', 'display': 'inline-block', 'textAlign': 'right'})
+        ]),
+        html.Hr(),
+        html.Div([
+            html.P("TOTAL DAMPAK EKONOMI:", 
+                   style={'margin': '0', 'fontSize': '18px', 'fontWeight': 'bold', 'color': '#2c3e50'}),
+            html.P(f"${total_impact:,.0f} Juta", 
+                   style={'margin': '10px 0', 'fontSize': '32px', 'fontWeight': 'bold', 'color': '#e74c3c'})
+        ], style={'backgroundColor': '#fff', 'padding': '15px', 'borderRadius': '5px', 'border': '2px solid #e74c3c'}),
+        html.P(f"*Setiap $1 investasi di sektor ini menghasilkan ${multiplier:.2f} output ekonomi total.*", 
+               style={'fontStyle': 'italic', 'color': '#7f8c8d', 'fontSize': '14px'})
     ])
 
-@app.callback(
-    Output("download-dataframe-csv", "data"),
-    Input("download-btn", "n_clicks"),
-    prevent_initial_call=True,
+@callback(
+    Output('data-table-body', 'children'),
+    Input('data-table-body', 'id')  # Dummy trigger untuk load awal
 )
-def func(n_clicks):
-    return dcc.send_data_frame(df_analysis.to_csv, "io_analysis_data.csv", index=False)
+def render_table(_):
+    rows = []
+    for _, row in multipliers_df.iterrows():
+        # Cari kategori dari linkages_df jika ada
+        linkage_row = linkages_df[linkages_df['Sector'] == row['Sector']]
+        category = linkage_row['Category'].values[0] if not linkage_row.empty else '-'
+        
+        rows.append(html.Tr([
+            html.Td(row['Rank'], style={'padding': '8px', 'border': '1px solid #ddd', 'textAlign': 'center'}),
+            html.Td(row['Sector'], style={'padding': '8px', 'border': '1px solid #ddd'}),
+            html.Td(f"{row['Output Multiplier']:.4f}x", 
+                    style={'padding': '8px', 'border': '1px solid #ddd', 'textAlign': 'center', 'fontWeight': 'bold'}),
+            html.Td(category, style={'padding': '8px', 'border': '1px solid #ddd'})
+        ]))
+    return rows
 
-# --- Menjalankan Aplikasi ---
+# ==========================================
+# RUN SERVER (Konfigurasi untuk Render/Production)
+# ==========================================
 if __name__ == '__main__':
-    # Debug mode=True untuk development, False untuk production
-    app.run_server(debug=True, port=8050)
+    # Deteksi port dari environment variable (wajib untuk Render/Heroku)
+    port = int(os.environ.get('PORT', 8050))
+    
+    print(f"Starting Dash app on port {port}...")
+    app.run_server(
+        host='0.0.0.0',  # Wajib agar bisa diakses dari luar container
+        port=port,
+        debug=False      # Wajib False untuk produksi
+    )
