@@ -4,3 +4,8 @@ numpy>=1.24.0
 plotly>=5.17.0
 openpyxl
 requests
+dash>=2.14.0
+dash-core-components>=2.0.0
+dash-html-components>=2.0.0
+dash-bootstrap-components>=1.5.0
+waitress>=3.0.0
