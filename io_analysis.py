@@ -66,14 +66,28 @@ class InputOutputAnalyzer:
             sheet = year_to_sheet[year]
             df = pd.read_excel(xls, sheet_name=sheet, header=None)
             
-            # Extract industry names from row 4
-            self.industry_names = df.iloc[4, 2:37].tolist()
+            # Extract industry names from row 4 (columns 2 onwards, excluding empty cells)
+            row_4 = df.iloc[4, 2:]
+            self.industry_names = [str(x) for x in row_4.tolist() if pd.notna(x) and str(x).strip()]
             
-            # Get intermediate transaction matrix (rows 6-40, cols 2-36)
-            self.intermediate_transactions = df.iloc[6:41, 2:37].values.astype(float)
+            # Determine actual data dimensions dynamically
+            n_sectors = len(self.industry_names)
             
-            # Get total output from row 49 "TOTAL"
-            self.total_output = df.iloc[49, 2:37].values.astype(float)
+            # Get intermediate transaction matrix (rows 6 to 6+n_sectors-1, cols 2 to 2+n_sectors-1)
+            self.intermediate_transactions = df.iloc[6:6+n_sectors, 2:2+n_sectors].values.astype(float)
+            
+            # Get total output from the last row labeled "TOTAL"
+            total_row_idx = None
+            for idx in range(len(df)-1, -1, -1):
+                if str(df.iloc[idx, 0]).upper() == 'TOTAL':
+                    total_row_idx = idx
+                    break
+            
+            if total_row_idx is None:
+                # Fallback: use row 49 if TOTAL label not found
+                total_row_idx = 49
+            
+            self.total_output = df.iloc[total_row_idx, 2:2+n_sectors].values.astype(float)
             
             # Calculate technical coefficients
             self._calculate_technical_coefficients()
@@ -88,6 +102,8 @@ class InputOutputAnalyzer:
             
         except Exception as e:
             print(f"Error loading IO table: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def _calculate_technical_coefficients(self):
