@@ -250,17 +250,19 @@ class InputOutputAnalyzer:
         }
     
     def _interpret_linkages(self, backward: float, forward: float) -> str:
-        """Interpret linkage values"""
-        avg_linkage = len(self.industry_names) ** 0.5  # Rough average benchmark
+        """Interpret linkage values based on Rasmussen-Hirschman framework"""
+        n = len(self.industry_names)
+        avg_linkage = n / (n - 1)  # Theoretical average for normalized Leontief inverse (~1.03 for 35 sectors)
         
-        if backward > avg_linkage and forward > avg_linkage:
-            return "Key sector - strong backward and forward linkages"
-        elif backward > avg_linkage:
-            return "Base industry - strong backward linkages, drives upstream sectors"
-        elif forward > avg_linkage:
-            return "Strategic sector - strong forward linkages, enables downstream activities"
+        # Key Sector Threshold: Both > 1.0 (above economy-wide average)
+        if backward > 1.0 and forward > 1.0:
+            return "🔑 Key Sector - Strong backward & forward linkages (Priority for investment)"
+        elif backward > 1.0 and forward <= 1.0:
+            return "🏭 Base Industry - Strong backward linkages, drives upstream suppliers"
+        elif backward <= 1.0 and forward > 1.0:
+            return "📦 Strategic Sector - Strong forward linkages, enables downstream industries"
         else:
-            return "Standard sector - moderate linkages"
+            return "📊 Standard Sector - Moderate linkages, typical economic role"
     
     def export_to_json(self, filename: str = 'io_analysis_results.json'):
         """Export analysis results to JSON file"""
