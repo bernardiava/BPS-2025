@@ -901,8 +901,10 @@ with tab5:
                                             paper_bgcolor='white', showlegend=False, margin=dict(l=50,r=50,t=80,b=50))
                     st.plotly_chart(fig_radar, use_container_width=True)
                 with viz2:
-                    avg_backward = np.mean([io_analyzer.get_sector_linkages(s)['backward_linkage'] for s in io_analyzer.industry_names[:10]])
-                    avg_forward  = np.mean([io_analyzer.get_sector_linkages(s)['forward_linkage']  for s in io_analyzer.industry_names[:10]])
+                    # Calculate economy-wide average from ALL sectors (proper benchmark)
+                    all_linkages = [io_analyzer.get_sector_linkages(s) for s in io_analyzer.industry_names]
+                    avg_backward = np.mean([l['backward_linkage'] for l in all_linkages])
+                    avg_forward  = np.mean([l['forward_linkage']  for l in all_linkages])
                     fig_cmp = go.Figure(data=[
                         go.Bar(name='Sektor Terpilih', x=['Backward Linkage','Forward Linkage'],
                                y=[linkages['backward_linkage'],linkages['forward_linkage']],
@@ -914,7 +916,7 @@ with tab5:
                     fig_cmp.update_layout(height=500, title="📊 Perbandingan dengan Rata-rata Ekonomi", barmode='group',
                                           yaxis_title="Nilai Linkage", paper_bgcolor='white', plot_bgcolor='rgba(240,240,240,0.5)')
                     st.plotly_chart(fig_cmp, use_container_width=True)
-                    st.caption("*Rata-rata dihitung dari 10 sektor pertama sebagai sampel")
+                    st.caption("*Rata-rata dihitung dari seluruh 35 sektor ekonomi Indonesia")
     else:
         st.markdown("""
         <div style="background:linear-gradient(135deg,#ff6b6b 0%,#ee5a24 100%);padding:3rem;border-radius:20px;color:white;text-align:center;">
